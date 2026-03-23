@@ -11,6 +11,12 @@ class Dialog:
     user_messege_time: datetime
     ai_responce_time: datetime
 
+    def to_context_messages(self) -> list:
+        return [
+            {"role": "user", "content": self.user_message},
+            {"role": "assistant", "content": self.ai_response}
+        ]
+
 # need to think about other parametrs cause we'll use MK
 @dataclass
 class Question:
