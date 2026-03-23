@@ -16,7 +16,7 @@ class YandexAIService(AIService):
         self.ai_model = config.ai_model
         self.ai_temperature = config.ai_temperature
         self.ai_max_tokens = config.ai_max_tokens
-        self.ai_instructoon = config.ai_instructoon
+        self.ai_instructoon = config.ai_instruction
 
     async def get_ai_response_with_context(self, 
         user_id: int,
