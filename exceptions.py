@@ -1,0 +1,13 @@
+class BaseError(Exception):
+    pass
+
+class DataBaseError(BaseError):
+    def __init__(self, message: str, **context):
+        self.context = context
+        self.message = message
+        super().__init__(f"DATA BASE ERROR:{self.message} - {self.context}")
+    
+
+class NoDataError(DataBaseError):
+    def __init__(self, **context):
+        super().__init__("NO DATA ERROR", **context)

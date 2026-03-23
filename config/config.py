@@ -1,0 +1,75 @@
+#config.py
+import os
+from dataclasses import dataclass
+from typing import Self
+
+
+class ConfigError(Exception):
+    pass
+
+class BotTokenMissing(ConfigError):
+    pass
+
+class DbHostMissing(ConfigError):
+    pass
+
+
+@dataclass
+class Config:
+    bot_token: str
+    ai_cloud_folder: str
+    ai_api_key: str
+    ai_model: str
+    ai_temperature: float
+    ai_max_tokens: int
+    ai_base_url: str
+    ai_instructoon: str
+    db_host: str
+    db_port: int
+    db_name: str
+    db_user: str
+    db_password: str
+
+    @classmethod
+    def load(cls) -> Self:
+        bot_token = os.getenv('BOT_TOKEN', '')
+        
+        ai_cloud_folder = os.getenv('YANDEX_CLOUD_FOLDER', '')
+        ai_api_key = os.getenv('YANDEX_CLOUD_API_KEY', '')
+        ai_model = os.getenv('YANDEX_CLOUD_MODEL', '')
+        ai_temperature = float(os.getenv('AI_TEMPERATURE', 0.7))
+        ai_max_tokens = int(os.getenv('AI_MAX_TOKENS', 500))
+        ai_base_url = os.getenv('AI_BASE_URL', '')
+        ai_instructoon = os.getenv('INSTRUCTIONS', '')
+
+        db_host = os.getenv('DB_HOST', '')
+        db_port = int(os.getenv('DB_PORT', ''))
+        db_name = os.getenv('DB_NAME', '')
+        db_user = os.getenv('DB_USER', '')
+        db_password = os.getenv('DB_PASSWORD', '')
+
+        instance = cls(
+            bot_token = bot_token,
+            ai_cloud_folder = ai_cloud_folder,
+            ai_api_key = ai_api_key,
+            ai_model = ai_model,
+            ai_temperature = ai_temperature,
+            ai_max_tokens = ai_max_tokens,
+            ai_base_url = ai_base_url,
+            ai_instructoon = ai_instructoon,
+            db_host = db_host,
+            db_port = db_port,
+            db_name = db_name,
+            db_user = db_user,
+            db_password = db_password
+        )
+
+        instance.validate()
+
+        return instance
+
+    def validate(self):
+        if not self.bot_token:
+            raise BotTokenMissing
+        if not db_host:
+            raise DbHostMissing
