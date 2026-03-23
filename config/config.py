@@ -23,7 +23,7 @@ class Config:
     ai_temperature: float
     ai_max_tokens: int
     ai_base_url: str
-    ai_instructoon: str
+    ai_instruction: str
     db_host: str
     db_port: int
     db_name: str
@@ -40,7 +40,7 @@ class Config:
         ai_temperature = float(os.getenv('AI_TEMPERATURE', 0.7))
         ai_max_tokens = int(os.getenv('AI_MAX_TOKENS', 500))
         ai_base_url = os.getenv('AI_BASE_URL', '')
-        ai_instructoon = os.getenv('INSTRUCTIONS', '')
+        ai_instruction = os.getenv('INSTRUCTIONS', '')
 
         db_host = os.getenv('DB_HOST', '')
         db_port = int(os.getenv('DB_PORT', ''))
@@ -56,7 +56,7 @@ class Config:
             ai_temperature = ai_temperature,
             ai_max_tokens = ai_max_tokens,
             ai_base_url = ai_base_url,
-            ai_instructoon = ai_instructoon,
+            ai_instructoon = ai_instruction,
             db_host = db_host,
             db_port = db_port,
             db_name = db_name,
@@ -71,5 +71,5 @@ class Config:
     def validate(self):
         if not self.bot_token:
             raise BotTokenMissing
-        if not db_host:
+        if not self.db_host:
             raise DbHostMissing
