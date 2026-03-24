@@ -1,6 +1,7 @@
 from config import config
 import logging
 from exceptions import *
+import psycopg2
 
 logger = logging.getLogger(__name__)
 

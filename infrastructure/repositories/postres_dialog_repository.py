@@ -1,21 +1,15 @@
-
+from database.connection import DataBaseConnection
+from application.repositories.dialog import DialogRepository
 
 
 class PostgresDialogRepository(DialogRepository):
-    def __init__(self, connection_pool: asyncpg.Pool):
+    def __init__(self, db : DataBaseConnection):
         super().__init__()
-        self.connection_params = {
-            'host': config.db_host,
-            'port': config.db_port,
-            'database': config.db_name,
-            'user': config.db_user,
-            'password': config.db_password
-        }
-        self.conn = psycopg2.connect(**self.connection_params)
+        self.db = db
         self.create_table()
 
     def create_table(self):
-        with self.conn.cursor() as cur:            
+        with self.db.get_cursor() as cur:            
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS dialogs (
                     dialog_id SERIAL PRIMARY KEY,
@@ -26,24 +20,18 @@ class PostgresDialogRepository(DialogRepository):
                     ai_response_time TIMESTAMP DEFAULT NOW()
                 )
             """)
-            self.conn.commit()
+            self.db.commit()
 
     def save(self, dialog: Dialog):
-        if not all([dialog.user_id, dialog.user_message, dialog.ai_response]):
-            empty_data = [d for d in [dialog.user_id, dialog.user_message, dialog.ai_response] if d is None]
-            raise NoDataError(
-                missing_fields=empty_data,
-                user_id=dialog.user_id
-            )
         try:
-            with self.conn.cursor() as cur:
+            with self.db.get_cursor() as cur:
                 cur.execute("""
                     INSERT INTO dialogs (user_id, user_message, ai_response, user_message_time, ai_response_time)
                     VALUES (%s, %s, %s, %s, %s)
                 """, (dialog.user_id, dialog.user_message, dialog.ai_response, dialog.user_message_time, dialog.ai_response_time))
         except psycopg2.Error as e:
             logging.error(f"DB Error for user {dialog.user_id}: {e}")
-            self.conn.rollback()
+            self.db.rollback()
             raise DataBaseError(
                 str(e),
                 user_id=dialog.user_id,
@@ -53,7 +41,7 @@ class PostgresDialogRepository(DialogRepository):
 
     def get_recent_dialogs(self, user_id, limit=10):
         try:
-            with self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute("""
                     SELECT user_message, ai_response
                     FROM dialogs
@@ -77,9 +65,12 @@ class PostgresDialogRepository(DialogRepository):
 
                 return messages
         except psycopg2.Error as e:
-            logging.error(f"DB error: Couldn't find the dialogs for user {usesr_id}")
+            logging.error(f"DB error: Couldn't find the dialogs for user {user_id}")
             raise DataBaseError(
                 str(e),
                 user_id=user_id,
                 operation='find_dialog_by_user_id' 
             )
+    
+    def find_by_id(self, dialog_id:int) -> Dialog:
+        
