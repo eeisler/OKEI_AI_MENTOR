@@ -1,7 +1,10 @@
 #infrastracture/repositories/postgres_user_repository.py
 import logging
 import psycopg2
-from domain.exceptions import UserNotFound
+from domain.exceptions.errors import UserNotFound
+from application.repositories.user import UserRepository
+from infrastructure.database.connection import DataBaseConnection
+from domain.entities.user import User
 
 logger = logging.getLogger(__name__)
 

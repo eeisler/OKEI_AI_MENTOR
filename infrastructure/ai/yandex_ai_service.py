@@ -2,7 +2,7 @@ from typing import Dict, List
 
 import openai
 
-from application.ports.ai import AIService
+from application.ports.ai.ai_service import AIService
 from config.config import Config
 
 

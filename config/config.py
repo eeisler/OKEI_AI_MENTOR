@@ -2,6 +2,7 @@
 import os
 from dataclasses import dataclass
 from typing import Self
+from dotenv import load_dotenv
 
 
 class ConfigError(Exception):
@@ -32,6 +33,9 @@ class Config:
 
     @classmethod
     def load(cls) -> Self:
+
+        load_dotenv() # temp
+
         bot_token = os.getenv('BOT_TOKEN', '')
         
         ai_cloud_folder = os.getenv('YANDEX_CLOUD_FOLDER', '')
@@ -43,7 +47,7 @@ class Config:
         ai_instruction = os.getenv('INSTRUCTIONS', '')
 
         db_host = os.getenv('DB_HOST', '')
-        db_port = int(os.getenv('DB_PORT', ''))
+        db_port = int(os.getenv('DB_PORT', '5432'))
         db_name = os.getenv('DB_NAME', '')
         db_user = os.getenv('DB_USER', '')
         db_password = os.getenv('DB_PASSWORD', '')

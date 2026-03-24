@@ -1,5 +1,6 @@
-from database.connection import DataBaseConnection
+from infrastructure.database.connection import DataBaseConnection
 from application.repositories.dialog import DialogRepository
+from domain.entities.dialog import Dialog
 
 
 class PostgresDialogRepository(DialogRepository):
@@ -73,4 +74,4 @@ class PostgresDialogRepository(DialogRepository):
             )
     
     def find_by_id(self, dialog_id:int) -> Dialog:
-        
+        pass        
