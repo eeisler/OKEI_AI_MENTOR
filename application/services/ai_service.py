@@ -1,12 +1,12 @@
-from application.ports.repositories import DialogRepository
-from application.ports.ai import AIService
+from application.repositories.dialog import DialogRepository
+from application.ports.ai.ai_service import AIService
 
 
 class AIContextService:
     def __init__(
             self, 
             dialog_repository: DialogRepository,
-            ai_service: AIService
+            ai_service: AIService,
             instruction: str
             ):
         self.dialog_repository = dialog_repository

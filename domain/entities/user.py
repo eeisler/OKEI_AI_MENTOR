@@ -1,9 +1,10 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 
+
 @dataclass
-class UserType(Enum):
+class UserRole(Enum):
     STUDENT = "student"
     TEACHER = "teacher"
     ADMIN = "admin"
@@ -14,8 +15,8 @@ class User:
     first_name: str | None
     middle_name: str | None
     last_name: str | None
-    user_type: UserType = UserType.STUDENT
-    group: Groups | None
+    role: UserRole = field(default_factory=lambda: UserRole.STUDENT)
+    #group: Groups | None
 
 
 

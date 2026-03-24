@@ -1,4 +1,4 @@
-from config import config
+from config.config import Config
 import logging
 from exceptions import *
 import psycopg2
@@ -6,7 +6,7 @@ import psycopg2
 logger = logging.getLogger(__name__)
 
 class DataBaseConnection:
-    def __init__(self, config: config):
+    def __init__(self, config: Config):
         self.connection_params = {
             'host': config.db_host,
             'port': config.db_port,
@@ -14,7 +14,7 @@ class DataBaseConnection:
             'user': config.db_user,
             'password': config.db_password
         }
-        self.conn: psycopg2.extensions.connection | None = None
+        self.conn = None
 
     def connect(self):
         if self.conn is None or self.conn.closed:
