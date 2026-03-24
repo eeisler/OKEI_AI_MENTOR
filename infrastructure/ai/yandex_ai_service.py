@@ -16,7 +16,7 @@ class YandexAIService(AIService):
         self.ai_model = config.ai_model
         self.ai_temperature = config.ai_temperature
         self.ai_max_tokens = config.ai_max_tokens
-        self.ai_instructoon = config.ai_instruction
+        self.ai_instruction = config.ai_instruction
 
     async def get_ai_response_with_context(self, 
         user_id: int,
@@ -24,18 +24,18 @@ class YandexAIService(AIService):
         history: List[Dict[str, str]]
         ) -> str:
         response = self.client.responses.create(
-            model=f"gpt://{self.client.project}/{self.model}",
-            temperature=self.temperature,
-            max_output_tokens=self.max_tokens,
+            model=f"gpt://{self.client.project}/{self.ai_model}",
+            temperature=self.ai_temperature,
+            max_output_tokens=self.ai_max_tokens,
             input=history  
         )
         return response.output_text
     
     async def get_simple_response(self, user_text: str) -> str:
         response = self.client.responses.create(
-            model=f"gpt://{self.client.project}/{self.model}",
-            temperature=self.temperature,
-            max_output_tokens=self.max_tokens,
+            model=f"gpt://{self.client.project}/{self.ai_model}",
+            temperature=self.ai_temperature,
+            max_output_tokens=self.ai_max_tokens,
             input=user_text
         )
         return response.output_text

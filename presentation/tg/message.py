@@ -1,12 +1,11 @@
 import aiogram 
 from aiogram.types import Message
 from aiogram import Router
-from services.ai_service import ai_service
+from application.ports.ai_service import AIService
 import logging
-from services.db_service import db_service
 
 
-logger = logging.getLogger(__name__) #
+logger = logging.getLogger(__name__) 
 router = Router()
 
 @router.message()

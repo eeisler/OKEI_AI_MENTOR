@@ -56,7 +56,7 @@ class Config:
             ai_temperature = ai_temperature,
             ai_max_tokens = ai_max_tokens,
             ai_base_url = ai_base_url,
-            ai_instructoon = ai_instruction,
+            ai_instruction = ai_instruction,
             db_host = db_host,
             db_port = db_port,
             db_name = db_name,

@@ -1,9 +1,9 @@
 #infrastracture/repositories/postgres_user_repository.py
 import logging
 import psycopg2
+from domain.exceptions import UserNotFound
 
 logger = logging.getLogger(__name__)
-
 
 class PostgresUserRepository(UserRepository):
     def __init__(self, db: DataBaseConnection):
@@ -29,7 +29,7 @@ class PostgresUserRepository(UserRepository):
             with self.db.get_cursor() as cur:
                 cur.execute("""
                         INSERT INTO users (user_id, username, first_name, middle_name, last_name)
-                        VALUES (%s, %s, %s, %s)
+                        VALUES (%s, %s, %s, %s, %s)
                     """, (user.user_id, user.username, user.first_name, user.middle_name, user.last_name))
         except psycopg2.Error as e:
             self.db.rollback()
@@ -41,7 +41,6 @@ class PostgresUserRepository(UserRepository):
                     SELECT username, first_name, middle_name, last_name
                     FROM users
                     WHERE user_id = %s
-                    ORDER BY timastamp DESC
                 """, (id))
         except psycopg2.Error as e:
             logger.error("Couldn't find user by id")
