@@ -39,7 +39,7 @@ class PostgresDialogRepository(DialogRepository):
             with self.conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO dialogs (user_id, user_message, ai_response, user_message_time, ai_response_time)
-                    VALUES (%s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s)
                 """, (dialog.user_id, dialog.user_message, dialog.ai_response, dialog.user_message_time, dialog.ai_response_time))
         except psycopg2.Error as e:
             logging.error(f"DB Error for user {dialog.user_id}: {e}")

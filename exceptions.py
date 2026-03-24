@@ -11,3 +11,16 @@ class DataBaseError(BaseError):
 class NoDataError(DataBaseError):
     def __init__(self, **context):
         super().__init__("NO DATA ERROR", **context)
+
+
+class DataBaseConnectionError(DataBaseError):
+    pass
+
+class DataBaseCommitError(DataBaseError):
+    pass
+
+class RollbackError(DataBaseError):
+    pass
+
+class ObjectNotFound(DataBaseError):
+    pass

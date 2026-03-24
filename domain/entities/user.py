@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from enum import Enum
-from . import entities
 
 
 @dataclass
@@ -12,7 +11,9 @@ class UserType(Enum):
 @dataclass
 class User:
     id: int
-    name: str | None
+    first_name: str | None
+    middle_name: str | None
+    last_name: str | None
     user_type: UserType = UserType.STUDENT
     group: Groups | None
 
