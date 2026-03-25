@@ -6,6 +6,8 @@ from aiogram.types import Message
 from aiogram.filters import Command
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.client.session.aiohttp import AiohttpSession
+from aiohttp import BasicAuth
 
 from config.config import Config
 
@@ -13,6 +15,12 @@ from infrastructure.database.connection import DataBaseConnection
 from infrastructure.repositories.postgres_user_repository import PostgresUserRepository
 from infrastructure.repositories.postres_dialog_repository import PostgresDialogRepository
 from infrastructure.ai.yandex_ai_service import YandexAIService
+from application.services.ai_service import AIContextService
+from application.services.user_service import UserService
+from application.services.dialog_service import DialogService
+
+from presentation.tg.start import router as start_router   
+from presentation.tg.help import router as help_router 
 
 from presentation.tg.message import MessageHandler
 
@@ -42,12 +50,19 @@ def setup_services(repositories, config: Config):
         'ai_context': ai_context_service
     }
 
-def setup_handlers(servises, config: Config):
+def setup_handlers(services, config: Config):
     message_handler = MessageHandler(
         user_service=services['user'],
         dialog_service=services['dialog'],
         ai_service=services['ai_context']
     )
+    
+    return {
+        'message': message_handler,
+        'start': start_router,
+        'help': help_router
+    }
+
 
 def register_routers(dp: Dispatcher, handlers):
     dp.include_router(handlers['message'].router)
@@ -72,10 +87,17 @@ async def main():
     handlers = setup_handlers(services, config)
     logger.info("Handlers created")
     
+    auth = BasicAuth(login=config.proxy_user, password=config.proxy_password)
+    
+    session = AiohttpSession(config.proxy_url, auth)
+
     bot = Bot(token=config.bot_token,
-    default=DefaultBotProperties(
+        session=session,
+        default=DefaultBotProperties(
             parse_mode=ParseMode.MARKDOWN_V2
-        ))
+        ),
+
+        )
     dp = Dispatcher()
     
     register_routers(dp, handlers)

@@ -12,7 +12,7 @@ class PostgresUserRepository(UserRepository):
     def __init__(self, db: DataBaseConnection):
         super().__init__()
         self.db = db
-        self.create_tables()
+        self.create_table()
 
     def create_table(self):
         with self.db.get_cursor() as cur:

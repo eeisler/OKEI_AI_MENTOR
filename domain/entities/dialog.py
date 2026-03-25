@@ -8,7 +8,7 @@ class Dialog:
     user_id: int
     user_messege: str
     ai_responce: str
-    user_messege_time: datetime
+    user_message_time: datetime
     ai_responce_time: datetime
 
     def to_context_messages(self) -> list:
