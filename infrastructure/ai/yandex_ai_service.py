@@ -9,8 +9,8 @@ from config.config import Config
 class YandexAIService(AIService):
     def __init__(self, config: Config):
         self.client = openai.OpenAI(
-            ai_api_key=config.ai_api_key,
-            ai_base_url=config.ai_base_url,
+            api_key=config.ai_api_key,
+            base_url=config.ai_base_url,
             project=config.ai_cloud_folder
         )
         self.ai_model = config.ai_model

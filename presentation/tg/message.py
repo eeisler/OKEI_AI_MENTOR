@@ -1,17 +1,17 @@
-import aiogram 
-from aiogram.types import Message
+# presentation/tg/message.py
+import logging
+import datetime
 from aiogram import Router
+from aiogram.types import Message
+
 from application.services.user_service import UserService
 from application.services.dialog_service import DialogService
 from application.services.ai_service import AIContextService
-from domain.exceptions.errors import UserNotFound
 from domain.entities.user import UserRole
-import datetime
+from domain.entities.dialog import Dialog
 
-import logging
+logger = logging.getLogger(__name__)
 
-logger = logging.getLogger(__name__) 
-router = Router()
 
 class MessageHandler:
     def __init__(
@@ -20,7 +20,6 @@ class MessageHandler:
         dialog_service: DialogService,
         ai_service: AIContextService
     ):
-
         self.user_service = user_service
         self.dialog_service = dialog_service
         self.ai_service = ai_service
@@ -30,35 +29,36 @@ class MessageHandler:
     def _register_handlers(self):
         @self.router.message()  
         async def handle_message(message: Message):
-            await self._handle_message(message)
+            await self._handle_message(message) 
             
-    async def _handle_messages(self, message: Message):
+    async def _handle_message(self, message: Message):  
         if not message.text:
             await message.answer("Пока я могу работать только с текстовыми запросами")
+            return
 
         await message.bot.send_chat_action(
             chat_id=message.chat.id,
             action='typing'
         ) 
 
-        user_messege_time = datetime.now()
+        user_message_time = datetime.datetime.now() 
 
         user_id = message.from_user.id
         user_text = message.text
         
-        logger.info(f'User message {user_text}')
+        logger.info(f'User message: {user_text}')
 
         try:
             user = await self.user_service.get_or_create_user(
                 user_id=user_id,
                 username=message.from_user.username,
-                first_name = None,
-                last_name = None,
-                middle_name = None,
-                role=UserRole.STUDENT # TODO: add choosing the role for the bot
+                first_name=message.from_user.first_name,
+                last_name=message.from_user.last_name,
+                middle_name=None,
+                role=UserRole.STUDENT
             )
         except Exception as e:
-            logger.error("Couldn't access user")
+            logger.error(f"Couldn't access user {user_id}: {e}")
             await message.answer("Ошибка доступа к пользователю. Попробуйте позже.")
             return
 
@@ -66,20 +66,24 @@ class MessageHandler:
         ai_response_time = None
 
         try:
-            ai_response = self.ai_service.get_response_with_history(user_id, user_text)
-            await message.answer(f'{ai_response}')
-            ai_responce_time = datetime.now()
+            ai_response = await self.ai_service.get_response_with_history(
+                user_id=user_id, 
+                user_message=user_text
+            )
+            await message.answer(ai_response)
+            ai_response_time = datetime.datetime.now()  
         except Exception as e:
-            logger.error('Ai responce error')
-            await message.answer(f'{e}')
+            logger.error(f'AI response error for user {user_id}: {e}')
+            await message.answer(f'Извините, произошла ошибка. Попробуйте позже.')
+            return
 
-        if ai_responce:
+        if ai_response:
             dialog = Dialog(
                 user_id=user_id,
-                user_messege=user_text,
-                ai_responce=ai_response,
-                user_messege_time=user_messege_time,
-                ai_responce_time=ai_responce_time
+                user_message=user_text,          
+                ai_response=ai_response,          
+                user_message_time=user_message_time,
+                ai_response_time=ai_response_time
             )
 
             try:

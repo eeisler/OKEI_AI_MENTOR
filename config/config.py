@@ -30,6 +30,9 @@ class Config:
     db_name: str
     db_user: str
     db_password: str
+    proxy_url: str
+    proxy_user: str
+    proxy_password: str
 
     @classmethod
     def load(cls) -> Self:
@@ -52,6 +55,10 @@ class Config:
         db_user = os.getenv('DB_USER', '')
         db_password = os.getenv('DB_PASSWORD', '')
 
+        proxy_url = os.getenv('PROXY_URL', '')
+        proxy_user = os.getenv('PROXY_USER', '')
+        proxy_password = os.getenv('PROXY_PASSWORD', '')
+
         instance = cls(
             bot_token = bot_token,
             ai_cloud_folder = ai_cloud_folder,
@@ -65,7 +72,10 @@ class Config:
             db_port = db_port,
             db_name = db_name,
             db_user = db_user,
-            db_password = db_password
+            db_password = db_password,
+            proxy_url = proxy_url, 
+            proxy_user = proxy_user,
+            proxy_password = proxy_password
         )
 
         instance.validate()
