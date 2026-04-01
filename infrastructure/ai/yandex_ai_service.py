@@ -20,7 +20,7 @@ class YandexAIService(AIService):
     async def get_ai_response_with_context(self, 
         user_id: int,
         user_message: str,
-        history: List[Dict[str, str]]
+        context: List[Dict[str, str]]
         ) -> str:
         response = self.client.responses.create(
             model=f"gpt://{self.client.project}/{self.ai_model}",
