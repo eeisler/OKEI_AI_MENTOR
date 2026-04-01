@@ -34,7 +34,7 @@ class DialogService:
         user_id: int,
         limit: int = 10
     ):
-        dialogs = repository.get_recent_dialogs(user_id=user_id, limit=limit)
+        dialogs = self.repository.get_recent_dialogs(user_id=user_id, limit=limit)
 
         messages = []
         for message in dialogs:

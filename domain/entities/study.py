@@ -5,9 +5,15 @@ from enum import Enum
 class Groups:
     id: int
     course: int
-    specialties: Specialties
+    specialty: Specialties
     group_number: int
     is_active: bool
+
+    def get_specialty(self):
+        return self.specialty
+    
+    def get_course(self):
+        return self.course
 
 @dataclass
 class Specialties:

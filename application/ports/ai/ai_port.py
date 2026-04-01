@@ -8,10 +8,14 @@ class AIService(ABC):
         self, 
         user_id: int,
         user_message: str,
-        history: List[Dict[str, str]]
+        context: List[Dict[str, str]]
     ) -> str:
         pass
 
     @abstractmethod
     async def get_simple_response(self, user_message: str) -> str:
+        pass
+
+    @abstractmethod
+    async def generate_task(self, prompt: str) -> str:
         pass
