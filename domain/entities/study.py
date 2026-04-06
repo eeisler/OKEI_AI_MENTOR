@@ -1,6 +1,22 @@
 from dataclasses import dataclass
 from enum import Enum
 
+
+@dataclass
+class Department:
+    id: int
+    name: str
+
+
+@dataclass
+class Specialties:
+    id: int
+    code: str
+    short_name: str
+    full_name: str
+    department: Department
+
+
 @dataclass
 class Groups:
     id: int
@@ -14,17 +30,3 @@ class Groups:
     
     def get_course(self):
         return self.course
-
-@dataclass
-class Specialties:
-    id: int
-    code: str
-    short_name: str
-    full_name: str
-    department: Department
-
-@dataclass
-class Department:
-    id: int
-    name: str
-

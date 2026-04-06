@@ -1,12 +1,12 @@
-from config.config import Config
-import logging
-from exceptions import *
 import psycopg2
+from psycopg2 import extras
+from contextlib import contextmanager
+from config import config
 
-logger = logging.getLogger(__name__)
 
 class DataBaseConnection:
-    def __init__(self, config: Config):
+    def __init__(self, config):
+        self.config = config
         self.connection_params = {
             'host': config.db_host,
             'port': config.db_port,
@@ -14,48 +14,31 @@ class DataBaseConnection:
             'user': config.db_user,
             'password': config.db_password
         }
-        self.conn = None
+        self._connection = None
 
     def connect(self):
-        if self.conn is None or self.conn.closed:
-            try:
-                self.conn = psycopg2.connect(**self.connection_params)
-                logger.info("DB connected")
-            except psycopg2.Error as e:
-                logger.error("DB connection faled")
-                raise DataBaseConnectionError()
-        return self.conn
-    
+        if self._connection is None or self._connection.closed:
+            self._connection = psycopg2.connect(**self.connection_params)
+        return self._connection
+
     def close(self):
-        if self.conn and not self.conn.closed:
-            try:
-                self.conn.close()
-                logger.info('Connections closed succsessfuly')
-            except psycopg2.Error as e:
-                logger.error('Closing connection failed')
+        if self._connection and not self._connection.closed:
+            self._connection.close()
+            self._connection = None
 
+    @contextmanager
     def get_cursor(self, cursor_factory=None):
-        if self.conn is None or self.conn.closed:
-            logger.error('Getting cursor with no db connection')
-            raise DataBaseConnectionError()
-
-        if cursor_factory:
-            return self.conn.cursor(cursor_factory=cursor_factory)
-
-        return self.conn.cursor()
+        connection = self.connect()
+        cursor = connection.cursor(cursor_factory=cursor_factory)
+        try:
+            yield cursor
+        finally:
+            cursor.close()
 
     def commit(self):
-        try:
-            self.conn.commit()
-            logger.info('Commit done')
-        except psycopg2.Error as e:
-            logger.error('Db commit error')
-            raise DataBaseCommitError
+        if self._connection and not self._connection.closed:
+            self._connection.commit()
 
     def rollback(self):
-        try:
-            self.conn.rollback()
-            logger.info('Rollback successfully') 
-        except psycopg2.Error as e:
-            logger.error('Rollback failed')
-            raise RollbackError()
+        if self._connection and not self._connection.closed:
+            self._connection.rollback()
