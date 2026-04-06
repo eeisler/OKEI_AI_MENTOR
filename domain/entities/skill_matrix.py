@@ -9,8 +9,8 @@ class SkillMatrix:
     course: int | None
     skill: str | None
     description: str | None
-    criterion: str | None
+    criterions: str | None
 
-    def get_specialty(self):
+    def get_specialization(self):
         return self.specialization
     
