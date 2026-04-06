@@ -24,3 +24,7 @@ class RollbackError(DataBaseError):
 
 class ObjectNotFound(DataBaseError):
     pass
+
+class SessionNotFoundError(BaseError):
+    def __init__(self, session_id):
+        pass

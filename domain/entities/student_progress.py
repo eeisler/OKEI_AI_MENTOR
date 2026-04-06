@@ -5,7 +5,7 @@ from domain.entities.skill_matrix import SkillMatrix
 class StudentProgress:
     id: int
     student_id: int 
-    skill_id: SkillMatrix 
+    skill_id: int
     level: int
     weaknesses: str
 
