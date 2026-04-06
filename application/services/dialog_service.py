@@ -1,4 +1,4 @@
-from application.repositories.dialog import DialogRepository
+from application.repositories.dialog_repository import DialogRepository
 from domain.entities.dialog import Dialog
 import logging
 import datetime

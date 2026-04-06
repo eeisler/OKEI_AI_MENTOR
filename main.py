@@ -8,12 +8,20 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiohttp import BasicAuth
+from dotenv import load_dotenv
 
+from application.repositories.session_repository import SessionRepository
+from application.repositories.skill_matrix_repository import SkillMatrixRepository
+from application.repositories.student_progress_repository import StudentProgressRepository
 from config.config import Config
 
 from infrastructure.database.connection import DataBaseConnection
+from infrastructure.repositories.postgres_student_progress_repository import PostgresStudentProgressRepository
 from infrastructure.repositories.postgres_user_repository import PostgresUserRepository
-from infrastructure.repositories.postres_dialog_repository import PostgresDialogRepository
+from infrastructure.repositories.postgres_dialog_repository import PostgresDialogRepository
+from infrastructure.repositories.postgres_skill_matrix_repository import PostgesSkillMatrixRepository
+from infrastructure.repositories.postgres_session_repository import PostgresSessionRepository
+
 from infrastructure.ai.yandex_ai_service import YandexAIService
 from application.services.ai_service import AIContextService
 from application.services.user_service import UserService
@@ -24,6 +32,7 @@ from presentation.tg.help import router as help_router
 
 from presentation.tg.message import MessageHandler
 
+load_dotenv()
 config = Config.load()
 
 logger = logging.getLogger(__name__)
@@ -32,14 +41,17 @@ logging.basicConfig(level=logging.INFO)
 def setup_repositories(db: DataBaseConnection):
     return {
         'user': PostgresUserRepository(db),
-        'dialog': PostgresDialogRepository(db)
+        'dialog': PostgresDialogRepository(db),
+        'skill_matrix': PostgesSkillMatrixRepository(db),
+        'student_progress': PostgresStudentProgressRepository(db),
+        'session': PostgresSessionRepository(db)
     }
 
 def setup_services(repositories, config: Config):
     yandex_ai = YandexAIService(config)
 
     ai_context_service = AIContextService(
-        dialog_repository=repositories['dialog'],
+        dialog_service=DialogService(repositories['dialog']),
         ai_service=yandex_ai,
         instruction=config.ai_instruction
     )
@@ -87,17 +99,19 @@ async def main():
     handlers = setup_handlers(services, config)
     logger.info("Handlers created")
     
-    auth = BasicAuth(login=config.proxy_user, password=config.proxy_password)
     
-    session = AiohttpSession(config.proxy_url, auth)
 
+    #auth = BasicAuth(login=config.proxy_user, password=config.proxy_password)
+    
+    #session = AiohttpSession(config.proxy_url, auth)
+      
+"""
     bot = Bot(token=config.bot_token,
-        session=session,
         default=DefaultBotProperties(
             parse_mode=ParseMode.MARKDOWN_V2
         ),
-
         )
+    
     dp = Dispatcher()
     
     register_routers(dp, handlers)
@@ -111,6 +125,6 @@ async def main():
         await bot.session.close()
         db.close()
         logger.info("Resources cleaned up")
-
+"""
 if __name__ == "__main__":
     asyncio.run(main())

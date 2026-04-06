@@ -11,3 +11,7 @@ class StudentProgressRepository(ABC):
     @abstractmethod
     def save(self, student_progress: StudentProgress):
         pass
+
+    @abstractmethod
+    def find_by_student_and_skill(self, student_id: int, skill_id: int) -> StudentProgress | None:
+        pass

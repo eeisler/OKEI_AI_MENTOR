@@ -2,7 +2,7 @@ from typing import Dict, List
 
 import openai
 
-from application.ports.ai.ai_service import AIService
+from application.ports.ai.ai_port import AIService
 from config.config import Config
 
 
@@ -26,7 +26,7 @@ class YandexAIService(AIService):
             model=f"gpt://{self.client.project}/{self.ai_model}",
             temperature=self.ai_temperature,
             max_output_tokens=self.ai_max_tokens,
-            input=history  
+            input=context + user_message
         )
         return response.output_text
     
@@ -36,5 +36,14 @@ class YandexAIService(AIService):
             temperature=self.ai_temperature,
             max_output_tokens=self.ai_max_tokens,
             input=user_text
+        )
+        return response.output_text
+    
+    async def generate_task(self, prompt: str) -> str:
+        response = await self.client.chat.completions.create(
+            model=self.ai_model,
+            temperature=self.ai_temperature,
+            max_tokens=self.ai_max_tokens,
+            messages=[{"role": "user", "content": prompt}]
         )
         return response.output_text

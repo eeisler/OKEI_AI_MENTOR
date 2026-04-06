@@ -2,7 +2,6 @@
 import os
 from dataclasses import dataclass
 from typing import Self
-from dotenv import load_dotenv
 
 
 class ConfigError(Exception):
@@ -18,6 +17,7 @@ class DbHostMissing(ConfigError):
 @dataclass
 class Config:
     bot_token: str
+    
     ai_cloud_folder: str
     ai_api_key: str
     ai_model: str
@@ -25,20 +25,15 @@ class Config:
     ai_max_tokens: int
     ai_base_url: str
     ai_instruction: str
+
     db_host: str
     db_port: int
     db_name: str
     db_user: str
     db_password: str
-    proxy_url: str
-    proxy_user: str
-    proxy_password: str
 
     @classmethod
     def load(cls) -> Self:
-
-        load_dotenv() # temp
-
         bot_token = os.getenv('BOT_TOKEN', '')
         
         ai_cloud_folder = os.getenv('YANDEX_CLOUD_FOLDER', '')
@@ -50,14 +45,10 @@ class Config:
         ai_instruction = os.getenv('INSTRUCTIONS', '')
 
         db_host = os.getenv('DB_HOST', '')
-        db_port = int(os.getenv('DB_PORT', '5432'))
+        db_port = int(os.getenv('DB_PORT', 0))
         db_name = os.getenv('DB_NAME', '')
         db_user = os.getenv('DB_USER', '')
         db_password = os.getenv('DB_PASSWORD', '')
-
-        proxy_url = os.getenv('PROXY_URL', '')
-        proxy_user = os.getenv('PROXY_USER', '')
-        proxy_password = os.getenv('PROXY_PASSWORD', '')
 
         instance = cls(
             bot_token = bot_token,
@@ -72,10 +63,7 @@ class Config:
             db_port = db_port,
             db_name = db_name,
             db_user = db_user,
-            db_password = db_password,
-            proxy_url = proxy_url, 
-            proxy_user = proxy_user,
-            proxy_password = proxy_password
+            db_password = db_password
         )
 
         instance.validate()

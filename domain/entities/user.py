@@ -16,7 +16,7 @@ class User:
     middle_name: str | None
     last_name: str | None
     role: UserRole = field(default_factory=lambda: UserRole.STUDENT)
-    group: Groups | None
+    group: Groups | None = None
 
     def get_group(self):
         return self.group

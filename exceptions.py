@@ -28,3 +28,11 @@ class ObjectNotFound(DataBaseError):
 class SessionNotFoundError(BaseError):
     def __init__(self, session_id):
         pass
+
+class SkillNotFound(DataBaseError):
+    def __init__(self, id):
+        pass
+
+class StudentProgressNotFound(DataBaseError):
+    def __init__(self, id):
+        pass

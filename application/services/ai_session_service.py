@@ -4,6 +4,7 @@ from application.ports.ai.ai_port import AIService
 from application.repositories.session_repository import SessionRepository
 from application.repositories.skill_matrix_repository import SkillMatrixRepository
 from application.repositories.student_progress_repository import StudentProgressRepository
+from application.repositories.user_repository import UserRepository
 from domain.entities.user import User
 from domain.entities.study import Specialties
 from domain.entities.student_progress import StudentProgress
@@ -21,6 +22,7 @@ class AISessionService:
         session_repository: SessionRepository,
         matrix_repository: SkillMatrixRepository,
         student_progress_repository: StudentProgressRepository,
+        user_repository: UserRepository,
         instruction: str
     ):
         self.ai_service = ai_service
@@ -28,6 +30,7 @@ class AISessionService:
         self.student_progress_repository = student_progress_repository
         self.matrix_repository = matrix_repository
         self.instruction = instruction
+        self.user_repository = user_repository
 
     async def start_session(self, user_id: int, user_message: str):
         prompt = self.form_question_instruction(user_id=user_id)
@@ -48,7 +51,7 @@ class AISessionService:
         return session 
     
     def form_question_instruction(self, user_id: int) -> str:        
-        user: User = self.student_progress_repository.find_by_id(user_id)
+        user: User = self.user_repository.find_by_id(user_id)
         course: int = user.course
 
         matrix_skill_id: int = self.student_progress_repository.find_by_id(user_id).skill_id
@@ -77,7 +80,7 @@ class AISessionService:
             student_progress.weaknesses = results['weaknesses']
             await self.student_progress_repository.save(student_progress)
             await self.session_repository.save(session)
-        else:
+        else: 
             await self.session_repository.save(session)
 
     def _parse_ai_result(self, ai_response: str):
