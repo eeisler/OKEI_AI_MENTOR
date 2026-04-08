@@ -1,5 +1,6 @@
 #main.py
 import logging
+import sys
 import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.types import Message
@@ -57,30 +58,54 @@ def setup_services(repositories, config: Config):
     )
 
     return {
-        'user': UserService(repositories['user']),
+        'user': UserService(repositories['user'], repositories['skill_matrix'], repositories['student_progress']),
         'dialog': DialogService(repositories['dialog']),
         'ai_context': ai_context_service
     }
 
-def setup_handlers(services, config: Config):
-    message_handler = MessageHandler(
-        user_service=services['user'],
-        dialog_service=services['dialog'],
-        ai_service=services['ai_context']
-    )
+# def setup_handlers(services, config: Config):
+#     message_handler = MessageHandler(
+#         user_service=services['user'],
+#         dialog_service=services['dialog'],
+#         ai_service=services['ai_context']
+#     )
     
-    return {
-        'message': message_handler,
-        'start': start_router,
-        'help': help_router
-    }
+#     return {
+#         'message': message_handler,
+#         'start': start_router,
+#         'help': help_router
+#     }
 
 
-def register_routers(dp: Dispatcher, handlers):
-    dp.include_router(handlers['message'].router)
-    dp.include_router(handlers['start'])
-    dp.include_router(handlers['help'])
+# def register_routers(dp: Dispatcher, handlers):
+#     dp.include_router(handlers['message'].router)
+#     dp.include_router(handlers['start'])
+#     dp.include_router(handlers['help'])
 
+    #auth = BasicAuth(login=config.proxy_user, password=config.proxy_password)
+    
+    #session = AiohttpSession(config.proxy_url, auth)
+      
+
+    # bot = Bot(token=config.bot_token,
+    #     default=DefaultBotProperties(
+    #         parse_mode=ParseMode.MARKDOWN_V2
+    #     ),
+    #     )
+    
+    # dp = Dispatcher()
+    
+    # register_routers(dp, handlers)
+    # logger.info("Routers registered")
+    
+    # logger.info("Starting bot...")
+
+    # try:
+    #     await dp.start_polling(bot)
+    # finally:
+    #     await bot.session.close()
+    #     db.close()
+    #     logger.info("Resources cleaned up")
 
 async def main():
     config = Config.load()
@@ -96,35 +121,13 @@ async def main():
     services = setup_services(repositories, config)
     logger.info("Services created")
     
-    handlers = setup_handlers(services, config)
-    logger.info("Handlers created")
-    
-    
+    # handlers = setup_handlers(services, config)
+    # logger.info("Handlers created")
 
-    #auth = BasicAuth(login=config.proxy_user, password=config.proxy_password)
-    
-    #session = AiohttpSession(config.proxy_url, auth)
-      
-"""
-    bot = Bot(token=config.bot_token,
-        default=DefaultBotProperties(
-            parse_mode=ParseMode.MARKDOWN_V2
-        ),
-        )
-    
-    dp = Dispatcher()
-    
-    register_routers(dp, handlers)
-    logger.info("Routers registered")
-    
-    logger.info("Starting bot...")
+    user_message = input("User message: ")
+    ai_service = services['ai_context']
+    response = await ai_service.get_response_with_history(user_id=1, user_message=user_message)
+    print(response)
 
-    try:
-        await dp.start_polling(bot)
-    finally:
-        await bot.session.close()
-        db.close()
-        logger.info("Resources cleaned up")
-"""
 if __name__ == "__main__":
     asyncio.run(main())

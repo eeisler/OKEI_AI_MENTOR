@@ -6,13 +6,13 @@ from datetime import datetime
 
 from application.repositories.session_repository import SessionRepository
 from domain.entities.session import Session
-from infrastructure.database.connection import DatabaseConnection
+from infrastructure.database.connection import DataBaseConnection
 import logging
 
 logger = logging.getLogger(__name__)
 
 class PostgresSessionRepository(SessionRepository):
-    def __init__(self, db: DatabaseConnection):
+    def __init__(self, db: DataBaseConnection):
         self.db = db
         self.create_table()
 

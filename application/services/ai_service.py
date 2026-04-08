@@ -15,7 +15,11 @@ class AIContextService:
 
     async def get_response_with_history(self, user_id: int, user_message: str):
         dialog_history = await self.dialog_service.get_user_history(user_id, limit=10)
-        context = dialog_history + user_message
-        return await self.ai_service.get_ai_response_with_context(user_message=context)
+
+        return await self.ai_service.get_ai_response_with_context(
+            user_id=user_id,
+            user_message=user_message,
+            context=dialog_history
+        )
         
 

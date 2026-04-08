@@ -22,11 +22,18 @@ class YandexAIService(AIService):
         user_message: str,
         context: List[Dict[str, str]]
         ) -> str:
+
+        context_str = ""
+        for msg in context:
+            context_str += f"{msg['role']}: {msg['content']}\n"
+        
+        full_input = context_str + f"user: {user_message}"
+
         response = self.client.responses.create(
             model=f"gpt://{self.client.project}/{self.ai_model}",
             temperature=self.ai_temperature,
             max_output_tokens=self.ai_max_tokens,
-            input=context + user_message
+            input=full_input
         )
         return response.output_text
     
@@ -40,7 +47,7 @@ class YandexAIService(AIService):
         return response.output_text
     
     async def generate_task(self, prompt: str) -> str:
-        response = await self.client.chat.completions.create(
+        response = await self.client.responses.create(
             model=self.ai_model,
             temperature=self.ai_temperature,
             max_tokens=self.ai_max_tokens,
