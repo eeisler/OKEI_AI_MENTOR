@@ -61,7 +61,7 @@ class PostgresDialogRepository(DialogRepository):
                     SELECT user_message, ai_response
                     FROM dialogs
                     WHERE user_id = %s
-                    ORDER BY user_message_time DESC  # Fixed typo: 'timastamp' -> 'user_message_time'
+                    ORDER BY user_message_time DESC  
                     LIMIT %s
                 """, (user_id, limit))
 
@@ -79,6 +79,7 @@ class PostgresDialogRepository(DialogRepository):
                     })
 
                 return messages
+                
         except psycopg2.Error as e:
             logger.error(f"DB error: Couldn't find the dialogs for user {user_id}: {e}")
             raise DataBaseError(
