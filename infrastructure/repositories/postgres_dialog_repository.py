@@ -2,6 +2,7 @@ import asyncio
 import logging
 import psycopg2
 from psycopg2 import extras
+from typing import List, Optional
 
 from application.repositories.dialog_repository import DialogRepository
 from domain.entities.dialog import Dialog
@@ -12,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 class PostgresDialogRepository(DialogRepository):
     def __init__(self, db: DataBaseConnection):  
-        super().__init__()
         self.db = db  
         self.create_table()
 
@@ -20,17 +20,19 @@ class PostgresDialogRepository(DialogRepository):
         with self.db.get_cursor() as cur:  
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS dialogs (
-                    dialog_id SERIAL PRIMARY KEY,
+                    id SERIAL PRIMARY KEY,
                     user_id BIGINT REFERENCES users(user_id),
                     user_message TEXT NOT NULL,
                     ai_response TEXT NOT NULL,
+                    question_id INTEGER,
                     user_message_time TIMESTAMP DEFAULT NOW(),
                     ai_response_time TIMESTAMP DEFAULT NOW()
                 )
             """)
-            self.db.commit()  
+            self.db.commit()
+            logger.info("Dialogs table created/verified")
 
-    async def save(self, dialog: Dialog):
+    async def save(self, dialog: Dialog) -> Dialog:
         if not all([dialog.user_id, dialog.user_message, dialog.ai_response]):
             empty_data = [d for d in [dialog.user_id, dialog.user_message, dialog.ai_response] if d is None]
             raise NoDataError(
@@ -38,13 +40,30 @@ class PostgresDialogRepository(DialogRepository):
                 user_id=dialog.user_id
             )
         try:
-            with self.db.get_cursor() as cur: 
+            with self.db.get_cursor() as cur:
+                # Insert new dialog
                 cur.execute("""
-                    INSERT INTO dialogs (user_id, user_message, ai_response, user_message_time, ai_response_time)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO dialogs (user_id, user_message, ai_response, question_id, user_message_time, ai_response_time)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING id, user_id, user_message, ai_response, question_id, user_message_time, ai_response_time
                 """, (dialog.user_id, dialog.user_message, dialog.ai_response, 
-                      dialog.user_message_time, dialog.ai_response_time))
-                self.db.commit()  
+                      dialog.question_id, dialog.user_message_time, dialog.ai_response_time))
+                
+                result = cur.fetchone()
+                self.db.commit()
+                
+                if result:
+                    dialog.id = result[0]
+                    dialog.user_id = result[1]
+                    dialog.user_message = result[2]
+                    dialog.ai_response = result[3]
+                    dialog.question_id = result[4]
+                    dialog.user_message_time = result[5]
+                    dialog.ai_response_time = result[6]
+                
+                logger.info(f"Dialog {dialog.id} saved for user {dialog.user_id}")
+                return dialog
+                
         except psycopg2.Error as e:
             logger.error(f"DB Error for user {dialog.user_id}: {e}")
             self.db.rollback() 
@@ -54,48 +73,106 @@ class PostgresDialogRepository(DialogRepository):
                 operation='save_dialog'          
             )
 
-    async def get_recent_dialogs(self, user_id, limit=10):
+    async def get_recent_dialogs(
+        self, 
+        user_id: int, 
+        limit: int = 10,
+        question_id: int = None
+    ) -> List[Dialog]:
         try:
-            with self.db.get_cursor(cursor_factory=extras.DictCursor) as cur:  
-                cur.execute("""
-                    SELECT user_message, ai_response
-                    FROM dialogs
-                    WHERE user_id = %s
-                    ORDER BY user_message_time DESC  
-                    LIMIT %s
-                """, (user_id, limit))
+            with self.db.get_cursor(cursor_factory=extras.DictCursor) as cur:
+                if question_id:
+                    cur.execute("""
+                        SELECT id, user_id, user_message, ai_response, question_id, 
+                               user_message_time, ai_response_time
+                        FROM dialogs
+                        WHERE user_id = %s AND question_id = %s
+                        ORDER BY user_message_time DESC
+                        LIMIT %s
+                    """, (user_id, question_id, limit))
+                else:
+                    cur.execute("""
+                        SELECT id, user_id, user_message, ai_response, question_id, 
+                               user_message_time, ai_response_time
+                        FROM dialogs
+                        WHERE user_id = %s
+                        ORDER BY user_message_time DESC
+                        LIMIT %s
+                    """, (user_id, limit))
 
                 rows = cur.fetchall()
-                messages = []
-
-                for row in reversed(rows):
-                    messages.append({
-                        "role": "user",
-                        "content": row['user_message']
-                    })
-                    messages.append({
-                        "role": "assistant",
-                        "content": row["ai_response"]
-                    })
-
-                return messages
+                dialogs = []
+                
+                for row in rows:
+                    dialog = Dialog(
+                        id=row['id'],
+                        user_id=row['user_id'],
+                        user_message=row['user_message'],
+                        ai_response=row['ai_response'],
+                        question_id=row['question_id'],
+                        user_message_time=row['user_message_time'],
+                        ai_response_time=row['ai_response_time']
+                    )
+                    dialogs.append(dialog)
+                
+                return dialogs
                 
         except psycopg2.Error as e:
-            logger.error(f"DB error: Couldn't find the dialogs for user {user_id}: {e}")
+            logger.error(f"DB error: Couldn't find dialogs for user {user_id}: {e}")
             raise DataBaseError(
                 str(e),
                 user_id=user_id,
-                operation='find_dialog_by_user_id' 
+                operation='get_recent_dialogs' 
             )
 
-    def find_by_id(self, dialog_id: int) -> Dialog | None:  
+    async def get_dialogs_by_question(
+        self,
+        user_id: int,
+        question_id: int
+    ) -> List[Dialog]:
         try:
             with self.db.get_cursor(cursor_factory=extras.DictCursor) as cur:
                 cur.execute("""
-                    SELECT dialog_id, user_id, user_message, ai_response, 
+                    SELECT id, user_id, user_message, ai_response, question_id, 
                            user_message_time, ai_response_time
                     FROM dialogs
-                    WHERE dialog_id = %s
+                    WHERE user_id = %s AND question_id = %s
+                    ORDER BY user_message_time ASC
+                """, (user_id, question_id))
+                
+                rows = cur.fetchall()
+                dialogs = []
+                
+                for row in rows:
+                    dialog = Dialog(
+                        id=row['id'],
+                        user_id=row['user_id'],
+                        user_message=row['user_message'],
+                        ai_response=row['ai_response'],
+                        question_id=row['question_id'],
+                        user_message_time=row['user_message_time'],
+                        ai_response_time=row['ai_response_time']
+                    )
+                    dialogs.append(dialog)
+                
+                return dialogs
+                
+        except psycopg2.Error as e:
+            logger.error(f"DB error: Couldn't find dialogs for user {user_id}, question {question_id}: {e}")
+            raise DataBaseError(
+                str(e),
+                user_id=user_id,
+                operation='get_dialogs_by_question'
+            )
+
+    async def find_by_id(self, dialog_id: int) -> Optional[Dialog]:
+        try:
+            with self.db.get_cursor(cursor_factory=extras.DictCursor) as cur:
+                cur.execute("""
+                    SELECT id, user_id, user_message, ai_response, question_id, 
+                           user_message_time, ai_response_time
+                    FROM dialogs
+                    WHERE id = %s
                 """, (dialog_id,))
                 
                 result = cur.fetchone()
@@ -103,10 +180,11 @@ class PostgresDialogRepository(DialogRepository):
                     return None
                 
                 return Dialog(
-                    dialog_id=result['dialog_id'],
+                    id=result['id'],
                     user_id=result['user_id'],
                     user_message=result['user_message'],
                     ai_response=result['ai_response'],
+                    question_id=result['question_id'],
                     user_message_time=result['user_message_time'],
                     ai_response_time=result['ai_response_time']
                 )

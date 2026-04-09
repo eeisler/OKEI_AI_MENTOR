@@ -64,10 +64,10 @@ class PostgesSkillMatrixRepository(SkillMatrixRepository):
     def save(self, skill: SkillMatrix):
         try:
             with self.db.get_cursor() as cur:
-                # Проверяем существует ли specialization
+                # Проверяем существует ли Speciality
                 cur.execute("SELECT id FROM specialties WHERE id = %s", (skill.specialization_id,))
                 if not cur.fetchone():
-                    raise ValueError(f"Specialization with id {skill.specialization_id} does not exist")
+                    raise ValueError(f"Speciality with id {skill.specialization_id} does not exist")
                 
                 cur.execute("""
                     INSERT INTO skill_matrix (specialization_id, skill, course, description, criterions)
