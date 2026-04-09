@@ -32,7 +32,7 @@ class AISessionService:
         self.instruction = instruction
         self.user_repository = user_repository
 
-    async def start_session(self, user_id: int, user_message: str):
+    async def start_session(self, user_id: int):
         prompt = self.form_question_instruction(user_id=user_id)
         ai_response = await self.ai_service.generate_task(prompt=prompt)
         created_at = datetime.now()
@@ -46,9 +46,21 @@ class AISessionService:
         session = await self.session_repository.create_session(session)
         return session
     
-    def continue_session(self, session_id: int): 
-        session = self.session_repository.find_by_id(session_id)        
-        return session 
+    def continue_session(self, session_id: int, user_message:str) -> str: 
+        session = self.session_repository.find_by_id(session_id)     
+
+        ai_response = await self.ai_service.get_response_with_history(
+            user_id=session.user_id, 
+            user_message=user_message)
+        
+        is_ended: bool = self.evaluate(ai_response)
+        if is_ended:
+            session.is_ended = True
+            self.save_session(session_id)
+            logger.info("Session ended and saved")
+            return None
+
+        return ai_response 
     
     def form_question_instruction(self, user_id: int) -> str:        
         user: User = self.user_repository.find_by_id(user_id)
@@ -59,11 +71,11 @@ class AISessionService:
         matrix_criterion: str = self.matrix_repository.find_by_id(matrix_skill_id).criterions
         student_progress: int = self.student_progress_repository.find_by_id(user_id).student_level
         weaknesses: str = self.student_progress_repository.find_by_id(user_id).weaknesses
-        specialization: Specialties = self.matrix_repository.find_by_id(matrix_skill_id).specialization
+        Speciality: Specialties = self.matrix_repository.find_by_id(matrix_skill_id).Speciality
 
         question_instruction = (f"""{self.instruction}
                                 Сделай задание для отработки навыка {matrix_skill} для студента
-                                специальности {specialization} {course} курса
+                                специальности {Speciality} {course} курса
                                 с прогрессом по этому навыку - {student_progress}% и с 
                                 проблемами усвоения темы в следующих местах: {weaknesses}
                                 Навык считается освоенным когда: {matrix_criterion}""")
@@ -98,7 +110,9 @@ class AISessionService:
         user_id: int = self.session_repository.find_by_id(session.id).user_id
         matrix_skill_id: int = self.student_progress_repository.find_by_id(user_id).skill_id
         criterions: str = self.matrix_repository.find_by_id(matrix_skill_id).criterions  
-        result_instruction =  f"""Оцени усвоение темы студентом по стобалльной шкале.
+        result_instruction =  f"""Оцени усвоение темы студентом по стобалльной шкале. 
+                                Процент освоения считай только по первому ответу студента.
+                                Последующие сообщения используй для определения слабостей студента в теме.
                                 Критерии усвоения: {criterions}
 
                                 Формат ответа (строго соблюдай):

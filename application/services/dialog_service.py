@@ -9,7 +9,7 @@ class DialogService:
     def __init__(self, repository:DialogRepository):
         self.repository=repository
     
-    async def save_dialog(
+    async def save(
         self,
         user_id: int,
         user_messege: str,
@@ -39,7 +39,7 @@ class DialogService:
         messages = []
         for message in dialogs:
             messages.extend(message.to_context_messages())
-        
+
         return messages
 
     

@@ -87,7 +87,7 @@ class MessageHandler:
             )
 
             try:
-                await self.dialog_service.save_dialog(dialog)
+                await self.dialog_service.save(dialog)
                 logger.info(f"Dialog saved for user {user_id}")
             except Exception as e:
                 logger.error(f"Failed to save dialog for user {user_id}: {e}")

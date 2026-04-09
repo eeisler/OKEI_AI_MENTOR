@@ -9,7 +9,7 @@ class Department:
 
 
 @dataclass
-class Specialties:
+class Specialty:
     id: int
     code: str
     short_name: str
@@ -21,7 +21,7 @@ class Specialties:
 class Groups:
     id: int
     course: int
-    specialty: Specialties
+    specialty: Specialty
     group_number: int
     is_active: bool
 

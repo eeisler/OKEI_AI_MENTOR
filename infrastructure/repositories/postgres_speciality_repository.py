@@ -9,7 +9,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class PostgresSpecializationRepository(SpecializationRepository):
+class PostgresSpecializationRepository(SpecialityRepository):
     def __init__(self, db: DatabaseConnection):
         self.db = db
         self.create_table()

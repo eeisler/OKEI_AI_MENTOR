@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 from domain.entities.study import Specialties
 
-class SpecializationRepository(ABC):
+class SpecialityRepository(ABC):
     @abstractmethod
     def save(self, specialty: Specialties) -> Specialties:
         """Save or update a specialty"""
