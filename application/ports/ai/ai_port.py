@@ -17,5 +17,5 @@ class AIService(ABC):
         pass
 
     @abstractmethod
-    async def generate_task(self, prompt: str) -> str:
+    async def generate_task(self, prompt: str):
         pass

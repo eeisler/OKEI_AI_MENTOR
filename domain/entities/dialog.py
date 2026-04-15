@@ -25,10 +25,3 @@ class Dialog:
             {"role": "assistant", "content": self.ai_response}
         ]
 
-
-@dataclass
-class Question:
-    id: Optional[int] = None
-    question_text: str = ""
-    skill_id: Optional[int] = None
-    level: int 

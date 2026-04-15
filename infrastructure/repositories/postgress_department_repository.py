@@ -19,40 +19,35 @@ class PostgresDepartmentRepository(DepartmentRepository):
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS departments (
                     id SERIAL PRIMARY KEY,
-                    name TEXT NOT NULL UNIQUE,
-                    description TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    name TEXT NOT NULL UNIQUE
                 )
             """)
             self.db.commit()
             logger.info("Departments table created/verified")
 
-    def save(self, department: Department) -> Department:
+    async def save(self, department: Department) -> Department:
         try:
             with self.db.get_cursor() as cur:
                 if department.id:
                     # Update existing
                     cur.execute("""
                         UPDATE departments 
-                        SET name = %s, description = %s, updated_at = CURRENT_TIMESTAMP
+                        SET name = %s
                         WHERE id = %s
-                        RETURNING id, name, description, created_at, updated_at
-                    """, (department.name, department.description, department.id))
+                        RETURNING id, name
+                    """, (department.name, department.id))
                 else:
                     # Insert new
                     cur.execute("""
-                        INSERT INTO departments (name, description)
-                        VALUES (%s, %s)
-                        RETURNING id, name, description, created_at, updated_at
-                    """, (department.name, department.description))
+                        INSERT INTO departments (name)
+                        VALUES (%s)
+                        RETURNING id, name
+                    """, (department.name,))
                 
                 result = cur.fetchone()
                 if result:
                     department.id = result[0]
                     department.name = result[1]
-                    department.description = result[2]
-                    # created_at and updated_at can be added to entity if needed
                 
                 self.db.commit()
                 logger.info(f"Department {department.id} saved successfully")
@@ -63,11 +58,11 @@ class PostgresDepartmentRepository(DepartmentRepository):
             logger.error(f"Couldn't save department: {e}")
             raise
 
-    def find_by_id(self, department_id: int) -> Optional[Department]:
+    async def find_by_id(self, department_id: int) -> Optional[Department]:
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute("""
-                    SELECT id, name, description, created_at, updated_at
+                    SELECT id, name
                     FROM departments
                     WHERE id = %s
                 """, (department_id,))
@@ -78,18 +73,17 @@ class PostgresDepartmentRepository(DepartmentRepository):
                 
                 return Department(
                     id=result['id'],
-                    name=result['name'],
-                    description=result['description']
+                    name=result['name']
                 )
         except psycopg2.Error as e:
             logger.error(f"Couldn't find department by id {department_id}: {e}")
             return None
 
-    def find_by_name(self, name: str) -> Optional[Department]:
+    async def find_by_name(self, name: str) -> Optional[Department]:
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute("""
-                    SELECT id, name, description, created_at, updated_at
+                    SELECT id, name
                     FROM departments
                     WHERE name = %s
                 """, (name,))
@@ -100,18 +94,17 @@ class PostgresDepartmentRepository(DepartmentRepository):
                 
                 return Department(
                     id=result['id'],
-                    name=result['name'],
-                    description=result['description']
+                    name=result['name']
                 )
         except psycopg2.Error as e:
             logger.error(f"Couldn't find department by name {name}: {e}")
             return None
 
-    def find_all(self) -> List[Department]:
+    async def find_all(self) -> List[Department]:
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute("""
-                    SELECT id, name, description, created_at, updated_at
+                    SELECT id, name
                     FROM departments
                     ORDER BY name
                 """)
@@ -121,15 +114,14 @@ class PostgresDepartmentRepository(DepartmentRepository):
                 for result in results:
                     departments.append(Department(
                         id=result['id'],
-                        name=result['name'],
-                        description=result['description']
+                        name=result['name']
                     ))
                 return departments
         except psycopg2.Error as e:
             logger.error(f"Couldn't find departments: {e}")
             return []
 
-    def delete(self, department_id: int) -> bool:
+    async def delete(self, department_id: int) -> bool:
         try:
             with self.db.get_cursor() as cur:
                 # Check if department has any specialties before deleting

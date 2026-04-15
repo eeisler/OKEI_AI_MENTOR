@@ -41,7 +41,6 @@ class PostgresDialogRepository(DialogRepository):
             )
         try:
             with self.db.get_cursor() as cur:
-                # Insert new dialog
                 cur.execute("""
                     INSERT INTO dialogs (user_id, user_message, ai_response, question_id, user_message_time, ai_response_time)
                     VALUES (%s, %s, %s, %s, %s, %s)

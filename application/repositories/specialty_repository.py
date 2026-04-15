@@ -1,35 +1,35 @@
 # application/repositories/specialization_repository.py
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from domain.entities.study import Specialties
+from domain.entities.study import Specialty
 
-class SpecialityRepository(ABC):
+class SpecialtyRepository(ABC):
     @abstractmethod
-    def save(self, specialty: Specialties) -> Specialties:
+    async def save(self, specialty: Specialty) -> Specialty:
         """Save or update a specialty"""
         pass
 
     @abstractmethod
-    def find_by_id(self, specialty_id: int) -> Optional[Specialties]:
+    async def find_by_id(self, specialty_id: int) -> Optional[Specialty]:
         """Find specialty by ID"""
         pass
 
     @abstractmethod
-    def find_by_code(self, code: str) -> Optional[Specialties]:
+    async def find_by_code(self, code: str) -> Optional[Specialty]:
         """Find specialty by code"""
         pass
 
     @abstractmethod
-    def find_by_department(self, department_id: int) -> List[Specialties]:
+    async def find_by_department(self, department_id: int) -> List[Specialty]:
         """Find all specialties in a department"""
         pass
 
     @abstractmethod
-    def find_all(self) -> List[Specialties]:
+    async def find_all(self) -> List[Specialty]:
         """Find all specialties"""
         pass
 
     @abstractmethod
-    def delete(self, specialty_id: int) -> bool:
+    async def delete(self, specialty_id: int) -> bool:
         """Delete a specialty"""
         pass

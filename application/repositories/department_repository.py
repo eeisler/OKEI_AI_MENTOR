@@ -5,26 +5,26 @@ from domain.entities.study import Department
 
 class DepartmentRepository(ABC):
     @abstractmethod
-    def save(self, department: Department) -> Department:
+    async def save(self, department: Department) -> Department:
         """Save or update a department"""
         pass
 
     @abstractmethod
-    def find_by_id(self, department_id: int) -> Optional[Department]:
+    async def find_by_id(self, department_id: int) -> Optional[Department]:
         """Find department by ID"""
         pass
 
     @abstractmethod
-    def find_by_name(self, name: str) -> Optional[Department]:
+    async def find_by_name(self, name: str) -> Optional[Department]:
         """Find department by name"""
         pass
 
     @abstractmethod
-    def find_all(self) -> List[Department]:
+    async def find_all(self) -> List[Department]:
         """Find all departments"""
         pass
 
     @abstractmethod
-    def delete(self, department_id: int) -> bool:
+    async def delete(self, department_id: int) -> bool:
         """Delete a department"""
         pass

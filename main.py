@@ -22,7 +22,8 @@ from infrastructure.repositories.postgres_user_repository import PostgresUserRep
 from infrastructure.repositories.postgres_dialog_repository import PostgresDialogRepository
 from infrastructure.repositories.postgres_skill_matrix_repository import PostgesSkillMatrixRepository
 from infrastructure.repositories.postgres_session_repository import PostgresSessionRepository
-from infrastructure.repositories.postgres_specialty_repository import PostgresSpecialityRepository
+from infrastructure.repositories.postgres_specialty_repository import PostgresSpecialtyRepository
+from infrastructure.repositories.postgres_group_repository import PostgresGroupRepository
 from infrastructure.repositories.postgress_department_repository import PostgresDepartmentRepository
 
 from infrastructure.ai.yandex_ai_service import YandexAIService
@@ -34,12 +35,15 @@ from domain.entities.session import Session
 from domain.entities.skill_matrix import SkillMatrix
 from domain.entities.student_progress import StudentProgress
 from domain.entities.user import User, UserRole
-from domain.entities.study import Speciality, Department, Groups
+from domain.entities.study import Specialty, Department, Groups
+from domain.entities.dialog import Dialog
 
 from presentation.tg.start import router as start_router   
 from presentation.tg.help import router as help_router 
 
 from presentation.tg.message import MessageHandler
+import datetime
+
 
 load_dotenv()
 config = Config.load()
@@ -49,13 +53,13 @@ logging.basicConfig(level=logging.INFO)
 
 def setup_repositories(db: DataBaseConnection):
     return {
-        'user': PostgresUserRepository(db),
-        'dialog': PostgresDialogRepository(db),
-        'skill_matrix': PostgesSkillMatrixRepository(db),
-        'student_progress': PostgresStudentProgressRepository(db),
-        'session': PostgresSessionRepository(db),
-        'speciality': PostgresSpecialityRepository(db),
-        'department': PostgresDepartmentRepository(db)
+        'department': PostgresDepartmentRepository(db),     
+        'speciality': PostgresSpecialtyRepository(db),       
+        'group': PostgresGroupRepository(db),                
+        'user': PostgresUserRepository(db),                  
+        'skill_matrix': PostgesSkillMatrixRepository(db),    
+        'student_progress': PostgresStudentProgressRepository(db),  
+        'dialog': PostgresDialogRepository(db),   
     }
 
 def setup_services(repositories, config: Config):
@@ -63,13 +67,8 @@ def setup_services(repositories, config: Config):
 
     ai_context_service = AIContextService(
         dialog_service=DialogService(repositories['dialog']),
+        dialog_repository=repositories['dialog'],
         ai_service=yandex_ai,
-        instruction=config.ai_instruction
-    )
-
-    ai_session_service = AISessionService(
-        ai_service=yandex_ai,
-        session_repository=repositories['session'],
         matrix_repository=repositories['skill_matrix'],
         student_progress_repository=repositories['student_progress'],
         user_repository=repositories['user'],
@@ -79,8 +78,7 @@ def setup_services(repositories, config: Config):
     return {
         'user': UserService(repositories['user'], repositories['skill_matrix'], repositories['student_progress']),
         'dialog': DialogService(repositories['dialog']),
-        'ai_context': ai_context_service,
-        'ai_session':ai_session_service
+        'ai_context': ai_context_service
     }
 
 def load_test_data():
@@ -88,10 +86,10 @@ def load_test_data():
         name = "Отделение программирования"
     )
 
-    speciality = Speciality(
+    speciality = Specialty(
         code = "09.07.02",
-        short_name = "пк"
-        full_name = "программист"
+        short_name = "пк",
+        full_name = "программист",
         department = department
     )
 
@@ -103,15 +101,15 @@ def load_test_data():
     )
 
     user = User(
-        first_name="Иванка"
-        middle_name="Пупкина"
-        last_name="Акакиевна"
-        role=UserRole.STUDENT
+        first_name="Иванка",
+        middle_name="Пупкина",
+        last_name="Акакиевна",
+        role=UserRole.STUDENT,
         group=group
     )
 
     skill = SkillMatrix(
-        speciality = speciality,
+        specialty = speciality,
         course = 3,
         skill = "ООП на питоне",
         description = """
@@ -147,12 +145,13 @@ def load_test_data():
     )
 
     return {
-        'user': user, 
         'department': department,
         'speciality': speciality,
-        'group':group,
-        'skill':skill
+        'group': group,
+        'user': user,
+        'skill': skill
     }
+    
 
 async def main():
     config = Config.load()
@@ -170,22 +169,34 @@ async def main():
     
     # handlers = setup_handlers(services, config)
     # logger.info("Handlers created")
-    data = load_test_data()    
 
-    user = repositories['user'].save(data['user'])
-    skill_matrix = repositories['skill_matrix'].save(data['skill'])
-    department = repositories['department'].save(data['department'])
-    speciality = repositories['speciality'].save(data['speciality'])
-
+    mode = input("question/talk \n")
     ai_service = services['ai_context']
-    ai_session = services['ai_session']
+    data = load_test_data()    
+    await repositories['department'].save(data["department"])
+    await repositories['speciality'].save(data["speciality"])
+    await repositories['group'].save(data["group"])
+    await repositories['user'].save(data["user"])
+    await repositories['skill_matrix'].save(["skill"])
 
-    session = async ai_session.start_session(user_id=user.id)
-
-    task = await ai_service.get_response_with_history(user_id=1, user_message=user_message)
-    user_message = input("User answer: ")
-
-    print(session)
+    stop = ""
+    while stop != "stop":
+        stop = input("start/stop \n")
+        if mode == 'question':
+            dialog: Dialog = await ai_service.start_skill_session(user.id)
+            print(dialog.ai_response)
+            dialog.user_message = input()
+            user_message_time = datetime.now()
+            await ai_service.evaluate_answer(
+                question_id=dialog.question_id, 
+                user_id=dialog.user_id,
+                user_message_time=user_message_time)
+        else:
+            user_message = input("User answer: ")
+            response = await ai_service.get_response_with_history(user_id=data['user'].id, user_message=user_message)
+            print(response)
+        
+        
 
 if __name__ == "__main__":
     asyncio.run(main())

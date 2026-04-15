@@ -1,45 +1,50 @@
 from application.repositories.dialog_repository import DialogRepository
 from domain.entities.dialog import Dialog
 import logging
-import datetime
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 class DialogService:
-    def __init__(self, repository:DialogRepository):
-        self.repository=repository
+    def __init__(self, repository: DialogRepository):
+        self.repository = repository
     
     async def save(
         self,
         user_id: int,
-        user_messege: str,
-        ai_responce: str,
-        user_messege_time: datetime,
-        ai_responce_time: datetime
+        user_message: str,
+        ai_response: str,
+        question_id: int = None,
+        user_message_time: datetime = None,
+        ai_response_time: datetime = None
     ) -> Dialog:
         dialog = Dialog(
             user_id=user_id,
-            user_messege=user_messege,
-            ai_responce=ai_responce,
-            user_messege_time=user_messege_time,
-            ai_responce_time=ai_responce_time
+            user_message=user_message,
+            ai_response=ai_response,
+            question_id=question_id,
+            user_message_time=user_message_time or datetime.now(),
+            ai_response_time=ai_response_time or datetime.now()
         )
         dialog = await self.repository.save(dialog)
         logger.info(f'Dialog {dialog.id} saved successfully')
-
         return dialog
 
     async def get_user_history(
         self, 
         user_id: int,
-        limit: int = 10
-    ):
-        dialogs = await self.repository.get_recent_dialogs(user_id=user_id, limit=limit)
-
+        limit: int = 10,
+        question_id: int = None
+    ) -> list:
+        """Get user conversation history, optionally filtered by question"""
+        dialogs = await self.repository.get_recent_dialogs(
+            user_id=user_id, 
+            limit=limit,
+            question_id=question_id
+        )
+        
         messages = []
-        for message in dialogs:
-            messages.extend(message.to_context_messages())
-
+        for dialog in dialogs:
+            messages.extend(dialog.to_context_messages())
+        
         return messages
-
-    

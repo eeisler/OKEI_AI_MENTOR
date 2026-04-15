@@ -5,18 +5,18 @@ from domain.entities.skill_matrix import SkillMatrix
 
 class SkillMatrixRepository(ABC):
     @abstractmethod
-    def find_by_id(self, skill_id: int) -> SkillMatrix:
+    async def find_by_id(self, skill_id: int) -> SkillMatrix:
         pass
 
     @abstractmethod
-    def save(self, skill: SkillMatrix) -> SkillMatrix:
+    async def save(self, skill: SkillMatrix) -> SkillMatrix:
         pass
 
     @abstractmethod
-    def delete(self, skill: SkillMatrix):
+    async def delete(self, skill: SkillMatrix):
         pass
     
     @abstractmethod
-    def find_by_course_and_specialty(self, course: int, specialty_id: int) -> List[SkillMatrix]:
+    async def find_by_course_and_specialty(self, course: int, specialty_id: int) -> List[SkillMatrix]:
         pass
     

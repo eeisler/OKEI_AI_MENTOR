@@ -19,7 +19,6 @@ class AISessionService:
     def __init__(
         self,
         ai_service: AIService,
-        session_repository: SessionRepository,
         matrix_repository: SkillMatrixRepository,
         student_progress_repository: StudentProgressRepository,
         user_repository: UserRepository,
@@ -62,6 +61,9 @@ class AISessionService:
 
         return ai_response 
     
+    def evaluate(self, ai_response: str) -> bool:
+        
+
     def form_question_instruction(self, user_id: int) -> str:        
         user: User = self.user_repository.find_by_id(user_id)
         course: int = user.course
@@ -71,7 +73,7 @@ class AISessionService:
         matrix_criterion: str = self.matrix_repository.find_by_id(matrix_skill_id).criterions
         student_progress: int = self.student_progress_repository.find_by_id(user_id).student_level
         weaknesses: str = self.student_progress_repository.find_by_id(user_id).weaknesses
-        Speciality: Specialties = self.matrix_repository.find_by_id(matrix_skill_id).Speciality
+        Specialty: Specialty = self.matrix_repository.find_by_id(matrix_skill_id).Specialty
 
         question_instruction = (f"""{self.instruction}
                                 Сделай задание для отработки навыка {matrix_skill} для студента
