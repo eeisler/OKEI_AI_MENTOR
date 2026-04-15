@@ -27,7 +27,7 @@ class PostgresStudentProgressRepository(StudentProgressRepository):
             """)
             self.db.commit()
     
-    def save(self, student_progress: StudentProgress):
+    async def save(self, student_progress: StudentProgress):
         try:
             with self.db.get_cursor() as cur:
                 cur.execute("""
@@ -41,7 +41,7 @@ class PostgresStudentProgressRepository(StudentProgressRepository):
             self.db.rollback()
             raise  
 
-    def find_by_student_id(self, student_id: int) -> list[StudentProgress]:
+    async def find_by_student_id(self, student_id: int) -> list[StudentProgress]:
         """Find all progress records for a student"""
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
@@ -72,7 +72,7 @@ class PostgresStudentProgressRepository(StudentProgressRepository):
             logger.error(f"Couldn't find student progress by student_id {student_id}: {e}")
             raise
 
-    def find_by_id(self, progress_id: int) -> StudentProgress | None:
+    async def find_by_id(self, progress_id: int) -> StudentProgress | None:
         """Find a specific progress record by its ID"""
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
@@ -99,7 +99,7 @@ class PostgresStudentProgressRepository(StudentProgressRepository):
             logger.error(f"Couldn't find progress by id {progress_id}: {e}")
             raise
 
-    def find_by_student_and_skill(self, student_id: int, skill_id: int) -> StudentProgress | None:
+    async def find_by_student_and_skill(self, student_id: int, skill_id: int) -> StudentProgress | None:
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute("""

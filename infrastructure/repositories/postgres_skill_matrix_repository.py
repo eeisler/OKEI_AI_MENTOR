@@ -61,10 +61,9 @@ class PostgesSkillMatrixRepository(SkillMatrixRepository):
             self.db.rollback()
             raise
 
-    def save(self, skill: SkillMatrix):
+    async def save(self, skill: SkillMatrix):
         try:
             with self.db.get_cursor() as cur:
-                # Проверяем существует ли Speciality
                 cur.execute("SELECT id FROM specialties WHERE id = %s", (skill.specialization_id,))
                 if not cur.fetchone():
                     raise ValueError(f"Speciality with id {skill.specialization_id} does not exist")
@@ -88,7 +87,7 @@ class PostgesSkillMatrixRepository(SkillMatrixRepository):
             self.db.rollback()
             raise
 
-    def find_by_id(self, skill_id: int) -> SkillMatrix:
+    async def find_by_id(self, skill_id: int) -> SkillMatrix:
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute("""
@@ -115,7 +114,7 @@ class PostgesSkillMatrixRepository(SkillMatrixRepository):
             logger.error(f"Couldn't find skill by id {skill_id}: {e}")
             raise
     
-    def find_by_course_and_specialty(self, course: int, specialty_id: int) -> List[SkillMatrix]:
+    async def find_by_course_and_specialty(self, course: int, specialty_id: int) -> List[SkillMatrix]:
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute("""
@@ -143,7 +142,7 @@ class PostgesSkillMatrixRepository(SkillMatrixRepository):
             logger.error(f"Couldn't find skills for course {course}, specialty {specialty_id}: {e}")
             return []
 
-    def delete(self, skill_id: int) -> bool:
+    async def delete(self, skill_id: int) -> bool:
         try:
             with self.db.get_cursor() as cur:
                 cur.execute("DELETE FROM skill_matrix WHERE id = %s", (skill_id,))
@@ -158,7 +157,7 @@ class PostgesSkillMatrixRepository(SkillMatrixRepository):
             logger.error(f"Couldn't delete skill {skill_id}: {e}")
             raise
 
-    def update(self, skill: SkillMatrix) -> SkillMatrix:
+    async def update(self, skill: SkillMatrix) -> SkillMatrix:
         try:
             with self.db.get_cursor() as cur:
                 cur.execute("""

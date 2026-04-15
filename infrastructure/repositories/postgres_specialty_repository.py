@@ -3,14 +3,14 @@ import psycopg2
 from psycopg2 import extras
 from typing import List, Optional
 from application.repositories.specialty_repository import SpecialtyRepository
-from domain.entities.study import Specialties, Department
-from infrastructure.database.connection import DatabaseConnection
+from domain.entities.study import Specialty, Department
+from infrastructure.database.connection import DataBaseConnection
 import logging
 
 logger = logging.getLogger(__name__)
 
-class PostgresSpecializationRepository(SpecialityRepository):
-    def __init__(self, db: DatabaseConnection):
+class PostgresSpecialtyRepository(SpecialtyRepository):
+    def __init__(self, db: DataBaseConnection):
         self.db = db
         self.create_table()
 
@@ -26,9 +26,9 @@ class PostgresSpecializationRepository(SpecialityRepository):
                 )
             """)
             self.db.commit()
-            logger.info("Specialties table created/verified")
+            logger.info("Specialty table created/verified")
 
-    def save(self, specialty: Specialties) -> Specialties:
+    async def save(self, specialty: Specialty) -> Specialty:
         try:
             with self.db.get_cursor() as cur:
                 if specialty.id:
@@ -66,7 +66,7 @@ class PostgresSpecializationRepository(SpecialityRepository):
             logger.error(f"Couldn't save specialty: {e}")
             raise
 
-    def find_by_id(self, specialty_id: int) -> Optional[Specialties]:
+    async def find_by_id(self, specialty_id: int) -> Optional[Specialty]:
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute("""
@@ -86,7 +86,7 @@ class PostgresSpecializationRepository(SpecialityRepository):
                     name=result['dept_name']
                 )
                 
-                return Specialties(
+                return Specialty(
                     id=result['id'],
                     code=result['code'],
                     short_name=result['short_name'],
@@ -97,7 +97,7 @@ class PostgresSpecializationRepository(SpecialityRepository):
             logger.error(f"Couldn't find specialty by id {specialty_id}: {e}")
             return None
 
-    def find_by_code(self, code: str) -> Optional[Specialties]:
+    async def find_by_code(self, code: str) -> Optional[Specialty]:
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute("""
@@ -117,7 +117,7 @@ class PostgresSpecializationRepository(SpecialityRepository):
                     name=result['dept_name']
                 )
                 
-                return Specialties(
+                return Specialty(
                     id=result['id'],
                     code=result['code'],
                     short_name=result['short_name'],
@@ -128,7 +128,7 @@ class PostgresSpecializationRepository(SpecialityRepository):
             logger.error(f"Couldn't find specialty by code {code}: {e}")
             return None
 
-    def find_by_department(self, department_id: int) -> List[Specialties]:
+    async def find_by_department(self, department_id: int) -> List[Specialty]:
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute("""
@@ -147,7 +147,7 @@ class PostgresSpecializationRepository(SpecialityRepository):
                         id=result['dept_id'],
                         name=result['dept_name']
                     )
-                    specialties.append(Specialties(
+                    specialties.append(Specialty(
                         id=result['id'],
                         code=result['code'],
                         short_name=result['short_name'],
@@ -159,7 +159,7 @@ class PostgresSpecializationRepository(SpecialityRepository):
             logger.error(f"Couldn't find specialties for department {department_id}: {e}")
             return []
 
-    def find_all(self) -> List[Specialties]:
+    async def find_all(self) -> List[Specialty]:
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute("""
@@ -177,7 +177,7 @@ class PostgresSpecializationRepository(SpecialityRepository):
                         id=result['dept_id'],
                         name=result['dept_name']
                     )
-                    specialties.append(Specialties(
+                    specialties.append(Specialty(
                         id=result['id'],
                         code=result['code'],
                         short_name=result['short_name'],
@@ -189,7 +189,7 @@ class PostgresSpecializationRepository(SpecialityRepository):
             logger.error(f"Couldn't find specialties: {e}")
             return []
 
-    def delete(self, specialty_id: int) -> bool:
+    async def delete(self, specialty_id: int) -> bool:
         try:
             with self.db.get_cursor() as cur:
                 cur.execute("DELETE FROM specialties WHERE id = %s", (specialty_id,))

@@ -32,7 +32,7 @@ class PostgresSessionRepository(SessionRepository):
             self.db.commit()
             logger.info("Sessions table created/verified")
 
-    def save(self, session: Session) -> Session:
+    async def save(self, session: Session) -> Session:
         """Save or update an existing session"""
         try:
             with self.db.get_cursor() as cur:
@@ -73,7 +73,7 @@ class PostgresSessionRepository(SessionRepository):
             logger.error(f"Couldn't save session: {e}")
             raise
 
-    def find_by_id(self, session_id: int) -> Optional[Session]:
+    async def find_by_id(self, session_id: int) -> Optional[Session]:
         """Find a session by its ID"""
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
@@ -103,7 +103,7 @@ class PostgresSessionRepository(SessionRepository):
             logger.error(f"Couldn't find session by id {session_id}: {e}")
             raise
 
-    def create_session(self, session: Session) -> Session:
+    async def create_session(self, session: Session) -> Session:
         """Create a new session (alias for save without id)"""
         # Ensure it's a new session
         session.id = None
@@ -111,7 +111,7 @@ class PostgresSessionRepository(SessionRepository):
         session.ended_at = None
         return self.save(session)
 
-    def end_session(self, session: Session) -> Session:
+    async def end_session(self, session: Session) -> Session:
         """End an existing session"""
         try:
             with self.db.get_cursor() as cur:
@@ -140,7 +140,7 @@ class PostgresSessionRepository(SessionRepository):
             logger.error(f"Couldn't end session {session.id}: {e}")
             raise
 
-    def find_active_sessions_by_user(self, user_id: int) -> list[Session]:
+    async def find_active_sessions_by_user(self, user_id: int) -> list[Session]:
         """Find all active (not ended) sessions for a user"""
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
@@ -170,7 +170,7 @@ class PostgresSessionRepository(SessionRepository):
             logger.error(f"Couldn't find active sessions for user {user_id}: {e}")
             return []
 
-    def find_sessions_by_user(self, user_id: int, limit: int = 10) -> list[Session]:
+    async def find_sessions_by_user(self, user_id: int, limit: int = 10) -> list[Session]:
         """Find recent sessions for a user"""
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:

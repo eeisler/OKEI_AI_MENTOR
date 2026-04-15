@@ -1,16 +1,17 @@
 from dataclasses import dataclass
-from domain.entities.study import Specialties
+from domain.entities.study import Specialty
+from typing import Optional
 
 
 @dataclass
 class SkillMatrix:
-    id: int
-    Speciality: Specialties | None
-    course: int | None
-    skill: str | None
-    description: str | None
-    criterions: str | None
+    id: Optional[int] = None
+    specialty: Specialty = None
+    course: int = None
+    skill: str = None
+    description: str = None
+    criterions: str = None
 
     def get_specialization(self):
-        return self.Speciality
+        return self.Specialty
     

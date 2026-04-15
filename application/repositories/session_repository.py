@@ -3,18 +3,18 @@ from domain.entities.session import Session
 
 class SessionRepository(ABC):
     @abstractmethod
-    def save(self, session: Session) -> Session:
+    async def save(self, session: Session) -> Session:
         pass
 
     @abstractmethod
-    def find_by_id(self, session_id: int) -> Session:
+    async def find_by_id(self, session_id: int) -> Session:
         pass
 
     @abstractmethod
-    def create_session(self, session: Session) -> Session:
+    async def create_session(self, session: Session) -> Session:
         pass
 
     @abstractmethod
-    def end_session(self, session: Session) -> Session:
+    async def end_session(self, session: Session) -> Session:
         pass
         
