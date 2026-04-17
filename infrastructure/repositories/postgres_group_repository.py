@@ -5,6 +5,7 @@ from application.repositories.group_repository import GroupRepository
 from domain.entities.study import Groups, Specialty
 from infrastructure.database.connection import DataBaseConnection
 import logging
+from exceptions import DataBaseError
 
 logger = logging.getLogger(__name__)
 
@@ -18,51 +19,44 @@ class PostgresGroupRepository(GroupRepository):
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS groups (
                     id SERIAL PRIMARY KEY,
-                    course INTEGER NOT NULL,
-                    specialty_id INTEGER NOT NULL REFERENCES specialties(id) ON DELETE CASCADE,
+                    year INTEGER NOT NULL,
+                    specialty_id INTEGER NOT NULL REFERENCES specialties(id),
                     group_number INTEGER NOT NULL,
-                    is_active BOOLEAN DEFAULT TRUE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(specialty_id, group_number)
+                    is_active BOOLEAN DEFAULT TRUE
+                    UNIQUE(year, specialty_id, group_number)
                 )
             """)
             self.db.commit()
-            logger.info("Groups table created/verified")
+            logger.info("Groups table created")
 
     async def save(self, group: Groups) -> Groups:
         try:
-            with self.db.get_cursor() as cur:
-                # Убедимся, что specialty сохранён и имеет ID
-                if group.specialty and group.specialty.id is None:
-                    raise ValueError("Specialty must be saved before group")
-                
-                specialty_id = group.specialty.id if group.specialty else None
-                
+            with self.db.get_cursor() as cur:                
                 if group.id:
-                    # Update existing
                     cur.execute("""
                         UPDATE groups 
-                        SET course = %s, specialty_id = %s, group_number = %s, is_active = %s, updated_at = CURRENT_TIMESTAMP
+                        SET year = %s, specialty_id = %s, group_number = %s, is_active = %s
                         WHERE id = %s
-                        RETURNING id, course, specialty_id, group_number, is_active, created_at, updated_at
-                    """, (group.course, specialty_id, group.group_number, group.is_active, group.id))
+                        RETURNING id, year, specialty_id, group_number, is_active
+                    """, (group.year, group.specialty_id, group.group_number, group.is_active, group.id))
                 else:
-                    # Insert new
                     cur.execute("""
-                        INSERT INTO groups (course, specialty_id, group_number, is_active)
+                        INSERT INTO groups (year, specialty_id, group_number, is_active)
                         VALUES (%s, %s, %s, %s)
-                        RETURNING id, course, specialty_id, group_number, is_active, created_at, updated_at
-                    """, (group.course, specialty_id, group.group_number, group.is_active))
-                
+                        RETURNING id, year, specialty_id, group_number, is_active
+                    """, (group.year, group.specialty_id, group.group_number, group.is_active))
+
                 result = cur.fetchone()
-                if result:
-                    group.id = result[0]
-                    group.course = result[1]
-                    # specialty_id is result[2] - need to load specialty if needed
-                    group.group_number = result[3]
-                    group.is_active = result[4]
-                    # created_at = result[5], updated_at = result[6] - optional
+
+                if not result:
+                    logger.error("Couldn't save group")
+                    raise DataBaseError()
+
+                group.id = result[0]
+                group.year = result[1]
+                group.specialty_id = result[2]
+                group.group_number = result[3]
+                group.is_active = result[4]
                 
                 self.db.commit()
                 logger.info(f"Group {group.id} saved successfully")
@@ -77,31 +71,19 @@ class PostgresGroupRepository(GroupRepository):
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute("""
-                    SELECT g.id, g.course, g.specialty_id, g.group_number, g.is_active,
-                           s.id as s_id, s.code as s_code, s.short_name as s_short_name, 
-                           s.full_name as s_full_name, s.department_id as s_department_id
-                    FROM groups g
-                    JOIN specialties s ON g.specialty_id = s.id
+                    SELECT g.id, g.year, g.specialty_id, g.group_number, g.is_active
+                    FROM groups AS g
                     WHERE g.id = %s
-                """, (group_id,))
+                """, (group_id))
                 
                 result = cur.fetchone()
                 if not result:
                     return None
                 
-                # Load specialty
-                specialty = Specialty(
-                    id=result['s_id'],
-                    code=result['s_code'],
-                    short_name=result['s_short_name'],
-                    full_name=result['s_full_name'],
-                    department_id=result['s_department_id']
-                )
-                
                 return Groups(
                     id=result['id'],
-                    course=result['course'],
-                    specialty=specialty,
+                    year=result['year'],
+                    specialty_id=result['specialty_id'],
                     group_number=result['group_number'],
                     is_active=result['is_active']
                 )
@@ -113,29 +95,20 @@ class PostgresGroupRepository(GroupRepository):
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute("""
-                    SELECT g.id, g.course, g.specialty_id, g.group_number, g.is_active,
-                           s.id as s_id, s.code as s_code, s.short_name as s_short_name, 
-                           s.full_name as s_full_name, s.department_id as s_department_id
+                    SELECT g.id, g.year, g.specialty_id, g.group_number, g.is_active
                     FROM groups g
-                    JOIN specialties s ON g.specialty_id = s.id
                     WHERE g.specialty_id = %s
-                    ORDER BY g.group_number
-                """, (specialty_id,))
+                    ORDER BY g.year DESC
+                """, (specialty_id))
                 
                 results = cur.fetchall()
                 groups = []
+
                 for result in results:
-                    specialty = Specialty(
-                        id=result['s_id'],
-                        code=result['s_code'],
-                        short_name=result['s_short_name'],
-                        full_name=result['s_full_name'],
-                        department_id=result['s_department_id']
-                    )
                     groups.append(Groups(
                         id=result['id'],
-                        course=result['course'],
-                        specialty=specialty,
+                        year=result['year'],
+                        specialty_id=result['specialty_id'],
                         group_number=result['group_number'],
                         is_active=result['is_active']
                     ))
@@ -148,29 +121,19 @@ class PostgresGroupRepository(GroupRepository):
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute("""
-                    SELECT g.id, g.course, g.specialty_id, g.group_number, g.is_active,
-                           s.id as s_id, s.code as s_code, s.short_name as s_short_name, 
-                           s.full_name as s_full_name, s.department_id as s_department_id
+                    SELECT g.id, g.year, g.specialty_id, g.group_number, g.is_active
                     FROM groups g
-                    JOIN specialties s ON g.specialty_id = s.id
                     WHERE g.is_active = TRUE
-                    ORDER BY g.course, g.group_number
+                    ORDER BY g.year DESC
                 """)
                 
                 results = cur.fetchall()
                 groups = []
                 for result in results:
-                    specialty = Specialty(
-                        id=result['s_id'],
-                        code=result['s_code'],
-                        short_name=result['s_short_name'],
-                        full_name=result['s_full_name'],
-                        department_id=result['s_department_id']
-                    )
                     groups.append(Groups(
                         id=result['id'],
-                        course=result['course'],
-                        specialty=specialty,
+                        year=result['year'],
+                        specialty_id=result['specialty_id'],
                         group_number=result['group_number'],
                         is_active=result['is_active']
                     ))
@@ -179,46 +142,35 @@ class PostgresGroupRepository(GroupRepository):
             logger.error(f"Couldn't find active groups: {e}")
             return []
 
-    async def find_by_course(self, course: int) -> List[Groups]:
+    async def find_by_year(self, year: int) -> List[Groups]:
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute("""
-                    SELECT g.id, g.course, g.specialty_id, g.group_number, g.is_active,
-                           s.id as s_id, s.code as s_code, s.short_name as s_short_name, 
-                           s.full_name as s_full_name, s.department_id as s_department_id
+                    SELECT g.id, g.year, g.specialty_id, g.group_number, g.is_active
                     FROM groups g
-                    JOIN specialties s ON g.specialty_id = s.id
-                    WHERE g.course = %s
-                    ORDER BY g.group_number
-                """, (course,))
+                    WHERE g.year = %s
+                    ORDER BY g.year DESC
+                """, (year))
                 
                 results = cur.fetchall()
                 groups = []
                 for result in results:
-                    specialty = Specialty(
-                        id=result['s_id'],
-                        code=result['s_code'],
-                        short_name=result['s_short_name'],
-                        full_name=result['s_full_name'],
-                        department_id=result['s_department_id']
-                    )
                     groups.append(Groups(
                         id=result['id'],
-                        course=result['course'],
-                        specialty=specialty,
+                        year=result['year'],
+                        specialty_id=result['specialty_id'],
                         group_number=result['group_number'],
                         is_active=result['is_active']
                     ))
                 return groups
         except psycopg2.Error as e:
-            logger.error(f"Couldn't find groups by course {course}: {e}")
+            logger.error(f"Couldn't find groups by year {year}: {e}")
             return []
 
     async def delete(self, group_id: int) -> bool:
         try:
             with self.db.get_cursor() as cur:
-                # Check if group has any users before deleting
-                cur.execute("SELECT COUNT(*) FROM users WHERE group_id = %s", (group_id,))
+                cur.execute("SELECT COUNT(*) FROM users WHERE group_id = %s", (group_id))
                 count = cur.fetchone()[0]
                 if count > 0:
                     logger.warning(f"Cannot delete group {group_id} - has {count} users")
