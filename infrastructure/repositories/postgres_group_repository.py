@@ -48,15 +48,12 @@ class PostgresGroupRepository(GroupRepository):
 
                 result = cur.fetchone()
 
-                if not result:
-                    logger.error("Couldn't save group")
-                    raise DataBaseError()
-
-                group.id = result[0]
-                group.year = result[1]
-                group.specialty_id = result[2]
-                group.group_number = result[3]
-                group.is_active = result[4]
+                if result:
+                    group.id = result[0]
+                    group.year = result[1]
+                    group.specialty_id = result[2]
+                    group.group_number = result[3]
+                    group.is_active = result[4]
                 
                 self.db.commit()
                 logger.info(f"Group {group.id} saved successfully")
