@@ -15,7 +15,7 @@ class Specialty:
     code: str = None
     short_name: str = None
     full_name: str = None
-    department: Department = None
+    department_id: int = None
 
 
 @dataclass
