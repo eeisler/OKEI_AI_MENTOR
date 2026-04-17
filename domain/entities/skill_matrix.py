@@ -3,10 +3,10 @@ from domain.entities.study import Specialty
 from typing import Optional
 
 
-@dataclass
+@dataclas
 class SkillMatrix:
     id: Optional[int] = None
-    specialty: Specialty = None
+    specialty_id: int = None
     course: int = None
     skill: str = None
     description: str = None
