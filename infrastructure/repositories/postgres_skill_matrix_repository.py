@@ -18,43 +18,19 @@ class PostgesSkillMatrixRepository(SkillMatrixRepository):
 
     def create_table(self):
         try:
-            with self.db.get_cursor() as cur:
-                # Проверяем существование таблицы specialties
-                cur.execute("""
-                    SELECT EXISTS (
-                        SELECT FROM information_schema.tables 
-                        WHERE table_name = 'specialties'
-                    )
-                """)
-                specialties_exists = cur.fetchone()[0]
-                
-                if not specialties_exists:
-                    # Создаем таблицу specialties если её нет
-                    cur.execute("""
-                        CREATE TABLE specialties (
-                            id SERIAL PRIMARY KEY,
-                            code TEXT NOT NULL UNIQUE,
-                            short_name TEXT NOT NULL,
-                            full_name TEXT NOT NULL,
-                            department_id INTEGER
-                        )
-                    """)
-                    logger.info("Specialties table created")
-                
-                # Создаем skill_matrix с правильным внешним ключом
+            with self.db.get_cursor() as cur:                   
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS skill_matrix (
                         id SERIAL PRIMARY KEY,
-                        specialization_id INTEGER NOT NULL,
-                        skill TEXT NOT NULL,
+                        specialty_id INTEGER NOT NULL REFERENCES specialties(id),
                         course INTEGER,
+                        skill TEXT NOT NULL,
                         description TEXT,
-                        criterions TEXT,
-                        FOREIGN KEY (specialization_id) REFERENCES specialties(id) ON DELETE CASCADE
+                        criterions TEXT
                     )
                 """)
                 self.db.commit()
-                logger.info("Skill matrix table created/verified")
+                logger.info("Skill matrix table created")
 
         except psycopg2.Error as e:
             logger.error(f"Couldn't create skill matrix table: {e}")
@@ -64,23 +40,25 @@ class PostgesSkillMatrixRepository(SkillMatrixRepository):
     async def save(self, skill: SkillMatrix):
         try:
             with self.db.get_cursor() as cur:
-                cur.execute("SELECT id FROM specialties WHERE id = %s", (skill.specialization_id,))
-                if not cur.fetchone():
-                    raise ValueError(f"Speciality with id {skill.specialization_id} does not exist")
-                
                 cur.execute("""
-                    INSERT INTO skill_matrix (specialization_id, skill, course, description, criterions)
+                    INSERT INTO skill_matrix (specialty_id, course, skill, description, criterions)
                     VALUES (%s, %s, %s, %s, %s)
-                    RETURNING id
-                """, (skill.specialization_id, skill.skill, skill.course, 
-                      skill.description, skill.criterions))
+                    RETURNING id, specialty_id, skill, course, description, criterions
+                """, (skill.specialty_id, skill.course, skill.skill, 
+                    skill.description, skill.criterions))
                 
                 result = cur.fetchone()
+
                 if result:
                     skill.id = result[0]
-                
+                    skill.specialty_id = result[1]
+                    skill.skill = result[2]
+                    skill.description = result[3]
+                    skill.criterions = result[4]
+            
                 self.db.commit()
                 logger.info(f"Skill saved with id {skill.id}")
+                return skill
                 
         except psycopg2.Error as e:
             logger.error(f"Couldn't save skill into matrix: {e}")
@@ -91,7 +69,7 @@ class PostgesSkillMatrixRepository(SkillMatrixRepository):
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute("""
-                    SELECT id, specialization_id, skill, course, description, criterions
+                    SELECT id, specialty_id, skill, course, description, criterions
                     FROM skill_matrix
                     WHERE id = %s
                 """, (skill_id,))
@@ -101,9 +79,9 @@ class PostgesSkillMatrixRepository(SkillMatrixRepository):
                     raise SkillNotFound(f"Skill with id {skill_id} not found")
                 
                 skill = SkillMatrix(
-                    specialization_id=result['specialization_id'], 
-                    skill=result['skill'], 
+                    specialty_id=result['specialty_id'], 
                     course=result['course'],
+                    skill=result['skill'], 
                     description=result['description'],
                     criterions=result['criterions']
                 )
@@ -118,9 +96,9 @@ class PostgesSkillMatrixRepository(SkillMatrixRepository):
         try:
             with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute("""
-                    SELECT id, specialization_id, skill, course, description, criterions
+                    SELECT id, specialty_id, course, skill, description, criterions
                     FROM skill_matrix
-                    WHERE course = %s AND specialization_id = %s
+                    WHERE course = %s AND specialty_id = %s
                     ORDER BY id
                 """, (course, specialty_id))
                 
@@ -128,9 +106,9 @@ class PostgesSkillMatrixRepository(SkillMatrixRepository):
                 skills = []
                 for result in results:
                     skill = SkillMatrix(
-                        specialization_id=result['specialization_id'],
-                        skill=result['skill'],
+                        specialty_id=result['specialty_id'],
                         course=result['course'],
+                        skill=result['skill'],
                         description=result['description'],
                         criterions=result['criterions']
                     )
@@ -162,11 +140,11 @@ class PostgesSkillMatrixRepository(SkillMatrixRepository):
             with self.db.get_cursor() as cur:
                 cur.execute("""
                     UPDATE skill_matrix 
-                    SET specialization_id = %s, skill = %s, course = %s, 
+                    SET specialty_id = %s, course = %s, skill = %s,
                         description = %s, criterions = %s
                     WHERE id = %s
                     RETURNING id
-                """, (skill.specialization_id, skill.skill, skill.course,
+                """, (skill.specialty_id, skill.course, skill.skill,
                       skill.description, skill.criterions, skill.id))
                 
                 self.db.commit()
