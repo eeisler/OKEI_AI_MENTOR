@@ -23,13 +23,12 @@ class PostgresDepartmentRepository(DepartmentRepository):
                 )
             """)
             self.db.commit()
-            logger.info("Departments table created/verified")
+            logger.info("Departments table created")
 
     async def save(self, department: Department) -> Department:
         try:
             with self.db.get_cursor() as cur:
                 if department.id:
-                    # Update existing
                     cur.execute("""
                         UPDATE departments 
                         SET name = %s
@@ -37,12 +36,11 @@ class PostgresDepartmentRepository(DepartmentRepository):
                         RETURNING id, name
                     """, (department.name, department.id))
                 else:
-                    # Insert new
                     cur.execute("""
                         INSERT INTO departments (name)
                         VALUES (%s)
                         RETURNING id, name
-                    """, (department.name,))
+                    """, (department.name))
                 
                 result = cur.fetchone()
                 if result:
@@ -65,7 +63,7 @@ class PostgresDepartmentRepository(DepartmentRepository):
                     SELECT id, name
                     FROM departments
                     WHERE id = %s
-                """, (department_id,))
+                """, (department_id))
                 
                 result = cur.fetchone()
                 if not result:
@@ -86,7 +84,7 @@ class PostgresDepartmentRepository(DepartmentRepository):
                     SELECT id, name
                     FROM departments
                     WHERE name = %s
-                """, (name,))
+                """, (name))
                 
                 result = cur.fetchone()
                 if not result:
@@ -117,6 +115,7 @@ class PostgresDepartmentRepository(DepartmentRepository):
                         name=result['name']
                     ))
                 return departments
+
         except psycopg2.Error as e:
             logger.error(f"Couldn't find departments: {e}")
             return []
@@ -124,7 +123,6 @@ class PostgresDepartmentRepository(DepartmentRepository):
     async def delete(self, department_id: int) -> bool:
         try:
             with self.db.get_cursor() as cur:
-                # Check if department has any specialties before deleting
                 cur.execute("""
                     SELECT COUNT(*) FROM specialties WHERE department_id = %s
                 """, (department_id,))
