@@ -18,7 +18,7 @@ class PostgresUserRepository(UserRepository):
         with self.db.get_cursor() as cur:
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
-                    user_id SERIAL PRIMARY KEY,
+                    id SERIAL PRIMARY KEY,
                     first_name TEXT,
                     middle_name TEXT,
                     last_name TEXT,
@@ -34,17 +34,25 @@ class PostgresUserRepository(UserRepository):
                 cur.execute("""
                     INSERT INTO users (first_name, middle_name, last_name, role, group_id)
                     VALUES (%s, %s, %s, %s, %s)
-                    RETURNING user_id
+                    RETURNING id
                 """, (
                     user.first_name,
                     user.middle_name,
                     user.last_name,
                     user.role.value if user.role else "student",
-                    user.group.id if user.group else None
+                    user.group_id if user.group else None
                 ))
-                user_id = cur.fetchone()[0]
+
+                if result:
+                    user.id = result[0]
+                    user.first_name = result[1]
+                    user.middle_name = result[2]
+                    user.last_name = result[3]
+                    user.role = result[4]
+                    user.group_id = result[5]
+
                 self.db.commit()
-                user.id = user_id
+                logger.info("User saved with id {user.id}")
                 return user
         except psycopg2.Error as e:
             self.db.rollback()
@@ -55,16 +63,14 @@ class PostgresUserRepository(UserRepository):
         try:
             with self.db.get_cursor(cursor_factory=DictCursor) as cur:
                 cur.execute("""
-                    SELECT user_id, first_name, middle_name, last_name, role, group_id
+                    SELECT id, first_name, middle_name, last_name, role, group_id
                     FROM users
-                    WHERE user_id = %s
-                """, (user_id,))
+                    WHERE id = %s
+                """, (user_id))
                 result = cur.fetchone()
                 
-                if not result:
-                    raise UserNotFound(user_id=user_id)
-                
                 role = UserRole(result['role']) if result['role'] else UserRole.STUDENT
+                group = result['group'] if result['group'] else None
                 
                 return User(
                     id=result['user_id'],
@@ -72,7 +78,7 @@ class PostgresUserRepository(UserRepository):
                     middle_name=result['middle_name'],
                     last_name=result['last_name'],
                     role=role,
-                    group=None
+                    group=group
                 )
                 
         except UserNotFound:
@@ -81,22 +87,31 @@ class PostgresUserRepository(UserRepository):
             logger.error(f"Couldn't find user by id {user_id}: {e}")
             raise UserNotFound(user_id=user_id)
 
-    async def find_by_id_with_group(self, user_id: int, group_repository) -> User | None:
-        user = await self.find_by_id(user_id)
-        if user and user.group:
-            group = await group_repository.find_by_id(user.group.id)
-            user.group = group
-        return user
-
-    async def update_last_active(self, user_id: int) -> None:
-        pass
+    async def update(self, user: User) -> User:
+        try:
+            with self.db.get_cursor() as cur:
+                cur.execute("""
+                    UPDATE users
+                    SET first_name = %s, middle_name = %s, last_name = %s, role = %s, group_id = %s
+                    WHERE id = %s
+                    RETURNING id, first_name, middle_name, last_name, role, group_id
+                """, (user.first_name, user.middle_name, user.last_name, user.role, user.group_id, user.id))
+                
+                self.db.commit()
+                logger.info(f"User {user.id} updated")
+                return user
+                
+        except psycopg2.Error as e:
+            self.db.rollback()
+            logger.error(f"Couldn't update skill {skill.id}: {e}")
+            raise
 
     async def delete(self, user_id: int) -> None:
         try:
             with self.db.get_cursor() as cur:
                 cur.execute("""
-                    DELETE FROM users WHERE user_id = %s
-                """, (user_id,))
+                    DELETE FROM users WHERE id = %s
+                """, (user_id))
                 self.db.commit()
         except psycopg2.Error as e:
             self.db.rollback()
