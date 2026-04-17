@@ -21,10 +21,11 @@ class Specialty:
 @dataclass
 class Groups:
     id: Optional[int] = None
-    course: int = None
-    specialty: Specialty = None
+    year: int = None
+    specialty_id: int = None
     group_number: int = None
-    is_active: bool = None
+    is_active: bool = False
+    
 
     def get_specialty(self):
         return self.specialty
