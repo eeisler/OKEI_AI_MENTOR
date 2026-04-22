@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIMentorTest</title>
+</head>
+<body>
+    {% if user.is_authenticated %}
+        {{ user.first_name|add:" "|add:user.middle_name|add:" "|add:user.last_name }}
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit">Выйти</button>
+        </form>
+        <form method="post" action="{% url 'chat' %}">
+            {% csrf_token %}
+            <button type="submit">Чат</button>
+        </form>
+    {% else %}
+        <form method="post" action="{% url 'login' %}">
+            {% csrf_token %}
+            <button type="submit">Вход</button>
+        </form>
+
+        <form method="post" action="{% url 'register' %}">
+            {% csrf_token %}
+            <button type="submit">Регистрация</button>
+        </form>
+    {% endif %}
+    {% block content %}
+    {% endblock %}
+</body>
+</html>
