@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<form method="post">
+    {% csrf_token %}
+    <div><h2>Вход</h2></div>
+    <div class="centered">
+        <div>
+            <div><a class="description">Введите логин</a></div>
+            <div>{{ form.username }}</div>
+            {% if form.username.errors %}
+            <div>
+                {% for error in form.username.errors %}
+                    {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div><a class="description">Введите пароль</a></div>
+            <div>{{ form.password }}</div>
+            {% if form.password.errors %}
+            <div>
+                {% for error in form.password.errors %}
+                    {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+    <div><button type="submit">Войти</button></div>
+</form>
+{% endblock %}

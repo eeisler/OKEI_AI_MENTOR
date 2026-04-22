@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="chat-container">
+    <div class="chat-header">
+        <h2>ИИ-ментор</h2>
+        <p>Задайте вопрос по вашей специальности</p>
+    </div>
+
+    <div class="chat-messages" id="chat-messages">
+        {% for dialog in dialogs %}
+            <div class="message user">
+                <strong>Вы:</strong>
+                <p>{{ dialog.user_message }}</p>
+            </div>
+            <div class="message assistant">
+                <strong>ИИ-ментор:</strong>
+                <p>{{ dialog.ai_response }}</p>
+            </div>
+        {% empty %}
+            <div class="message assistant">
+                <strong>ИИ-ментор:</strong>
+                <p>Здравствуйте! Я ваш ИИ-помощник. Задайте мне любой вопрос по учебе, и я постараюсь помочь.</p>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="chat-input">
+        <form method="post">
+            {% csrf_token %}
+            <textarea 
+                name="user_message" 
+                rows="3" 
+                placeholder="Напишите ваш вопрос здесь..."
+                required
+            ></textarea>
+            <button type="submit">Отправить</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Простая прокрутка вниз при загрузке страницы
+    const chatMessages = document.getElementById('chat-messages');
+    if (chatMessages) {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+</script>
+{% endblock %}
