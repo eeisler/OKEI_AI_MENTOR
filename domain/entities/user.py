@@ -13,6 +13,8 @@ class UserRole(Enum):
 @dataclass
 class User:
     id: Optional[int] = None
+    username: str = None  
+    hashed_password: str = None  
     first_name: str = None
     middle_name: str = None
     last_name: str = None

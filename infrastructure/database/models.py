@@ -7,7 +7,7 @@ class DepartmentModel(Base):
     __tablename__ = 'departments'
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    name: Mapped[str] = mapped_column(Text)
+    name: Mapped[str] = mapped_column(Text, unique=True)
     
     specialties: Mapped[list["SpecialtyModel"]] = relationship(back_populates="department")
 
@@ -17,8 +17,8 @@ class SpecialtyModel(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     code: Mapped[str] = mapped_column(Text)
-    short_name: Mapped[str] = mapped_column(Text)
-    full_name: Mapped[str] = mapped_column(Text)
+    short_name: Mapped[str] = mapped_column(Text, unique=True)
+    full_name: Mapped[str] = mapped_column(Text, unique=True)
     department_id: Mapped[int] = mapped_column(ForeignKey('departments.id'))
 
     department: Mapped['DepartmentModel'] = relationship(back_populates='specialties') 
@@ -42,13 +42,13 @@ class UserModel(Base):
     __tablename__ = 'users'
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    username: Mapped[str] = mapped_column(Text, unique=True)
+    hashed_password: Mapped[str] = mapped_column(Text)
     first_name: Mapped[str] = mapped_column(Text)
     middle_name: Mapped[str] = mapped_column(Text) 
     last_name: Mapped[str | None] = mapped_column(Text)
     role: Mapped[str | None] = mapped_column(Text, default="student")
     group_id: Mapped[int | None] = mapped_column(ForeignKey('groups.id'))
-
-    group: Mapped['GroupModel'] = relationship(back_populates='users')
 
 
 class DialogModel(Base):

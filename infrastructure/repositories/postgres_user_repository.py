@@ -24,6 +24,25 @@ class AsyncPostgresUserRepository(UserRepository):
         
         return User(
             id=db_user.id,
+            username=db_user.username,       
+            hashed_password=db_user.hashed_password, 
+            first_name=db_user.first_name,
+            middle_name=db_user.middle_name,
+            last_name=db_user.last_name,
+            role=UserRole(db_user.role)
+        )
+
+    async def find_by_username(self, username: str) -> User | None:
+        result = await self.session.execute(
+            select(UserModel).where(UserModel.username == username)
+        )
+        db_user = result.scalar_one_or_none()
+        if not db_user:
+            return None
+        return User(
+            id=db_user.id,
+            username=db_user.username,
+            hashed_password=db_user.hashed_password,
             first_name=db_user.first_name,
             middle_name=db_user.middle_name,
             last_name=db_user.last_name,
@@ -33,6 +52,8 @@ class AsyncPostgresUserRepository(UserRepository):
     async def save(self, user: User) -> User:
         db_user = UserModel(
             id=user.id,
+            username=user.username,        
+            hashed_password=user.hashed_password, 
             first_name=user.first_name,
             middle_name=user.middle_name,
             last_name=user.last_name,
@@ -49,6 +70,8 @@ class AsyncPostgresUserRepository(UserRepository):
                 update(UserModel)
                 .where(UserModel.id == user.id)
                 .values(
+                    username=user.username,         
+                    hashed_password=user.hashed_password, 
                     first_name=user.first_name,
                     middle_name=user.middle_name,
                     last_name=user.last_name,
@@ -58,7 +81,6 @@ class AsyncPostgresUserRepository(UserRepository):
             )
             await self.session.execute(stmt)
             await self.session.commit()
-
             logger.info(f"User {user.id} updated")
             return user
         except Exception as e:
@@ -71,10 +93,8 @@ class AsyncPostgresUserRepository(UserRepository):
             stmt = delete(UserModel).where(UserModel.id == user_id)
             await self.session.execute(stmt)
             await self.session.commit()
-
             logger.info(f"User {user_id} deleted")
-
         except Exception as e:
-            self.session.rollback()
+            await self.session.rollback() 
             logger.error(f"Failed to delete user {user_id}: {e}")
             raise
