@@ -5,6 +5,7 @@ from domain.entities.student_progress import StudentProgress
 from domain.entities.user import User, UserRole
 import logging
 
+
 logger = logging.getLogger(__name__)
 
 class UserService:
@@ -20,8 +21,9 @@ class UserService:
     
     async def get_or_create_user(
         self,
-        user_id: int,
+        user_id: int | None = None,
         username: str | None = None,
+        hashed_password: str | None = None,
         first_name: str | None = None,
         last_name: str | None = None,
         middle_name: str | None = None,
@@ -31,14 +33,16 @@ class UserService:
 
         if user is None:
             user = User(
-                user_id=user_id,
+                id=user_id,
                 username=username,
+                hashed_password=hashed_password,
                 first_name=first_name,
                 last_name=last_name,
                 middle_name=middle_name,
                 role=role
             )
-            user = self.repository.save(user)
+            user = await self.repository.save(user)
+
             if user.role == UserRole.STUDENT:
                 await self.initialize_student_progress(user)
             logger.info(f'User {user_id=} {username=} {role=} succfully created')
@@ -49,10 +53,10 @@ class UserService:
 
     async def initialize_student_progress(self, user: User):
         """Business logic: determine which skills to initialize"""
-        group = user.get_group()
+        group = user.group
         
         skills = await self.skill_matrix_repository.find_by_course_and_specialty(
-            course=group.course,
+            course= int(datetime.now.year) - group.year,
             specialty_id=group.specialty.id
         )
         

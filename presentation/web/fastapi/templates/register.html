@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<form method="post" action="/register">
+    <div><h2>Регистрация</h2></div>
+    <div class="centered">
+        <input type="text" name="username" placeholder="Логин" required><br>
+        <input type="password" name="password" placeholder="Пароль" required><br>
+        <input type="text" name="first_name" placeholder="Имя" required><br>
+        <input type="text" name="middle_name" placeholder="Отчество"><br>
+        <input type="text" name="last_name" placeholder="Фамилия"><br>
+        
+        {% if error %}
+            <div style="color: red;">{{ error }}</div>
+        {% endif %}
+    </div>
+    <div><button type="submit">Зарегистрироваться</button></div>
+</form>
+{% endblock %}

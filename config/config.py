@@ -33,6 +33,8 @@ class Config:
     db_user: str
     db_password: str
 
+    key: str
+
     @classmethod
     def load(cls) -> Self:
         load_dotenv() 
@@ -52,6 +54,8 @@ class Config:
         db_user = os.getenv('DB_USER', '')
         db_password = os.getenv('DB_PASSWORD', '')
 
+        key = os.getenv('SECRET_KEY', '')
+
         instance = cls(
             bot_token = bot_token,
             ai_cloud_folder = ai_cloud_folder,
@@ -65,7 +69,8 @@ class Config:
             db_port = db_port,
             db_name = db_name,
             db_user = db_user,
-            db_password = db_password
+            db_password = db_password,
+            key=key
         )
 
         #instance.validate()
