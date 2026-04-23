@@ -1,44 +1,24 @@
-import psycopg2
-from psycopg2 import extras
-from contextlib import contextmanager
-from config import config
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from config.config import Config
+from sqlalchemy.orm import DeclarativeBase
 
+cfg = Config.load()
 
-class DataBaseConnection:
-    def __init__(self, config):
-        self.config = config
-        self.connection_params = {
-            'host': config.db_host,
-            'port': config.db_port,
-            'database': config.db_name,
-            'user': config.db_user,
-            'password': config.db_password
-        }
-        self._connection = None
+DATABASE_URL = (
+    f"postgresql+asyncpg://{cfg.db_user}:{cfg.db_password}@"
+    f"{cfg.db_host}:{cfg.db_port}/{cfg.db_name}"
+)
 
-    def connect(self):
-        if self._connection is None or self._connection.closed:
-            self._connection = psycopg2.connect(**self.connection_params)
-        return self._connection
+engine = create_async_engine(DATABASE_URL, echo=True)
 
-    def close(self):
-        if self._connection and not self._connection.closed:
-            self._connection.close()
-            self._connection = None
+async_session_factory = async_sessionmaker(
+    bind=engine, 
+    expire_on_commit=False
+)
 
-    @contextmanager
-    def get_cursor(self, cursor_factory=None):
-        connection = self.connect()
-        cursor = connection.cursor(cursor_factory=cursor_factory)
-        try:
-            yield cursor
-        finally:
-            cursor.close()
+class Base(DeclarativeBase):
+    pass
 
-    def commit(self):
-        if self._connection and not self._connection.closed:
-            self._connection.commit()
-
-    def rollback(self):
-        if self._connection and not self._connection.closed:
-            self._connection.rollback()
+async def get_db():
+    async with async_session_factory() as session:
+        yield session
