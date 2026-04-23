@@ -2,6 +2,7 @@
 import os
 from dataclasses import dataclass
 from typing import Self
+from dotenv import load_dotenv
 
 
 class ConfigError(Exception):
@@ -34,6 +35,7 @@ class Config:
 
     @classmethod
     def load(cls) -> Self:
+        load_dotenv() 
         bot_token = os.getenv('BOT_TOKEN', '')
         
         ai_cloud_folder = os.getenv('YANDEX_CLOUD_FOLDER', '')
@@ -66,12 +68,12 @@ class Config:
             db_password = db_password
         )
 
-        instance.validate()
+        #instance.validate()
 
         return instance
 
-    def validate(self):
-        if not self.bot_token:
-            raise BotTokenMissing
-        if not self.db_host:
-            raise DbHostMissing
+    # def validate(self):
+    #     if not self.bot_token:
+    #         raise BotTokenMissing
+    #     if not self.db_host:
+    #         raise DbHostMissing
