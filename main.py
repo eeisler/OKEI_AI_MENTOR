@@ -16,15 +16,6 @@ from application.repositories.skill_matrix_repository import SkillMatrixReposito
 from application.repositories.student_progress_repository import StudentProgressRepository
 from config.config import Config
 
-from infrastructure.database.connection import DataBaseConnection
-from infrastructure.repositories.postgres_student_progress_repository import PostgresStudentProgressRepository
-from infrastructure.repositories.postgres_user_repository import PostgresUserRepository
-from infrastructure.repositories.postgres_dialog_repository import PostgresDialogRepository
-from infrastructure.repositories.postgres_skill_matrix_repository import PostgesSkillMatrixRepository
-from infrastructure.repositories.postgres_session_repository import PostgresSessionRepository
-from infrastructure.repositories.postgres_specialty_repository import PostgresSpecialtyRepository
-from infrastructure.repositories.postgres_group_repository import PostgresGroupRepository
-from infrastructure.repositories.postgress_department_repository import PostgresDepartmentRepository
 
 from infrastructure.ai.yandex_ai_service import YandexAIService
 from application.services.ai_service import AIContextService
@@ -38,12 +29,18 @@ from domain.entities.user import User, UserRole
 from domain.entities.study import Specialty, Department, Groups
 from domain.entities.dialog import Dialog
 
-from presentation.tg.start import router as start_router   
-from presentation.tg.help import router as help_router 
+from fastapi import FastAPI, Request, Form, Depends, Response
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from presentation.tg.message import MessageHandler
-import datetime
-
+# Твои репозитории и сервисы
+from infrastructure.database.connection import get_db
+from infrastructure.repositories.postgres_user_repository import AsyncPostgresUserRepository
+from infrastructure.repositories.postgres_skill_matrix_repository import AsyncPostgresSkillMatrixRepository
+from infrastructure.repositories.postgres_student_progress_repository import AsyncPostgresStudentProgressRepository
+from application.services.user_service import UserService
+from application.services.auth import hash_password, verify_password, create_access_token
 
 load_dotenv()
 config = Config.load()
@@ -51,152 +48,54 @@ config = Config.load()
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-def setup_repositories(db: DataBaseConnection):
-    return {
-        'department': PostgresDepartmentRepository(db),     
-        'speciality': PostgresSpecialtyRepository(db),       
-        'group': PostgresGroupRepository(db),                
-        'user': PostgresUserRepository(db),                  
-        'skill_matrix': PostgesSkillMatrixRepository(db),    
-        'student_progress': PostgresStudentProgressRepository(db),  
-        'dialog': PostgresDialogRepository(db),   
-    }
+app = FastAPI()
+templates = Jinja2Templates(directory='presentation/web/fastapi/templates')
 
-def setup_services(repositories, config: Config):
-    yandex_ai = YandexAIService(config)
+async def get_user_service(db: AsyncSession = Depends(get_db)):
+    user_repo = AsyncPostgresUserRepository(db)
+    skill_repo = AsyncPostgresSkillMatrixRepository(db)
+    progress_repo = AsyncPostgresStudentProgressRepository(db)
 
-    ai_context_service = AIContextService(
-        dialog_service=DialogService(repositories['dialog']),
-        dialog_repository=repositories['dialog'],
-        ai_service=yandex_ai,
-        matrix_repository=repositories['skill_matrix'],
-        student_progress_repository=repositories['student_progress'],
-        user_repository=repositories['user'],
-        instruction=config.ai_instruction
-    )
-
-    return {
-        'user': UserService(repositories['user'], repositories['skill_matrix'], repositories['student_progress']),
-        'dialog': DialogService(repositories['dialog']),
-        'ai_context': ai_context_service
-    }
-
-def load_test_data():
-    department = Department(
-        name = "Отделение программирования"
-    )
-
-    speciality = Specialty(
-        code = "09.07.02",
-        short_name = "пк",
-        full_name = "программист",
-        department = department
-    )
-
-    group = Groups(
-        course=3,
-        specialty=speciality,
-        group_number=1,
-        is_active=True
-    )
-
-    user = User(
-        first_name="Иванка",
-        middle_name="Пупкина",
-        last_name="Акакиевна",
-        role=UserRole.STUDENT,
-        group=group
-    )
-
-    skill = SkillMatrix(
-        specialty = speciality,
-        course = 3,
-        skill = "ООП на питоне",
-        description = """
-        Студент должен понимать и уметь применять основные принципы объектно-ориентированного программирования 
-        в языке Python. Включает в себя создание классов и объектов, использование наследования, 
-        инкапсуляции и полиморфизма. Студент должен уметь проектировать иерархии классов, 
-        работать с магическими методами, понимать разницу между классом и экземпляром, 
-        уметь использовать статические методы и методы класса, а также применять композицию и агрегацию.
-        """,
-        criterions = """
-        Критерии освоения навыка (100%):
-        
-        1. Студент самостоятельно создает классы с атрибутами и методами (без ошибок синтаксиса)
-        2. Корректно использует конструктор __init__ и self
-        3. Применяет наследование: создает дочерние классы и переопределяет методы родителя
-        4. Использует super() для вызова методов родительского класса
-        5. Понимает и применяет инкапсуляцию: использует _ и __ для защиты атрибутов
-        6. Создает property и setter для управления доступом к атрибутам
-        7. Использует полиморфизм: разные классы с одинаковыми интерфейсами методов
-        8. Работает с магическими методами (__str__, __repr__, __eq__, __lt__ и др.)
-        9. Различает и применяет статические методы (@staticmethod) и методы класса (@classmethod)
-        10. Проектирует композицию и агрегацию между классами
-        11. Пишет тесты для проверки функциональности классов
-        12. Отлавливает и обрабатывает исключения в ООП-коде
-        13. Использует аннотации типов в определениях классов
-        
-        Шкала оценки:
-        - 90-100%: Выполнены все критерии, код чистый и документированный
-        - 70-89%: Основные критерии выполнены, есть небольшие пробелы
-        - 50-69%: Базовые критерии выполнены, но есть существенные проблемы
-        - 0-49%: Недостаточное понимание ООП в Python
-        """
-    )
-
-    return {
-        'department': department,
-        'speciality': speciality,
-        'group': group,
-        'user': user,
-        'skill': skill
-    }
+    return UserService(user_repo, skill_repo, progress_repo)
     
+@app.get("/", response_class=HTMLResponse)
+async def main_page(request: Request):
+    return templates.TemplateResponse(
+    request=request, 
+    name="main.html", 
+    context={})
 
-async def main():
-    config = Config.load()
-    logger.info("Configuration loaded")
-    
-    db = DataBaseConnection(config)
-    db.connect()
-    logger.info("Database connected")
-    
-    repositories = setup_repositories(db)
-    logger.info("Repositories created")
-    
-    services = setup_services(repositories, config)
-    logger.info("Services created")
-    
-    # handlers = setup_handlers(services, config)
-    # logger.info("Handlers created")
+@app.get("/register", response_class=HTMLResponse)
+async def register_page(request: Request):
+    return templates.TemplateResponse(
+    request=request, 
+    name="register.html", 
+    context={})
 
-    mode = input("question/talk \n")
-    ai_service = services['ai_context']
-    data = load_test_data()    
-    await repositories['department'].save(data["department"])
-    await repositories['speciality'].save(data["speciality"])
-    await repositories['group'].save(data["group"])
-    await repositories['user'].save(data["user"])
-    await repositories['skill_matrix'].save(["skill"])
+@app.post('/register')
+async def register(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    first_name: str = Form(...),
+    middle_name: str = Form(None),
+    last_name: str = Form(None),
+    service: UserService = Depends(get_user_service)
+):
+    hashed_password = hash_password(password)
 
-    stop = ""
-    while stop != "stop":
-        stop = input("start/stop \n")
-        if mode == 'question':
-            dialog: Dialog = await ai_service.start_skill_session(user.id)
-            print(dialog.ai_response)
-            dialog.user_message = input()
-            user_message_time = datetime.now()
-            await ai_service.evaluate_answer(
-                question_id=dialog.question_id, 
-                user_id=dialog.user_id,
-                user_message_time=user_message_time)
-        else:
-            user_message = input("User answer: ")
-            response = await ai_service.get_response_with_history(user_id=data['user'].id, user_message=user_message)
-            print(response)
-        
-        
+    await service.get_or_create_user(
+        username=username,
+        hashed_password=hashed_password,
+        first_name=first_name,
+        middle_name=middle_name,
+        last_name=last_name
+    )
+    return RedirectResponse(url="/login", status_code=302)
 
-if __name__ == "__main__":
-    asyncio.run(main())
+@app.get('/login', response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse(
+    request=request, 
+    name="login.html", 
+    context={})

@@ -3,7 +3,6 @@ from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from domain.exceptions.errors import UserNotFound
 from application.repositories.user_repository import UserRepository
-from infrastructure.database.connection import DataBaseConnection
 from domain.entities.user import User, UserRole
 from infrastructure.database.models import UserModel
 

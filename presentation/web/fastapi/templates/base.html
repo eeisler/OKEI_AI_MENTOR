@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AIMentor</title>
+</head>
+<body>
+    {% if user %}
+        {{ user.first_name }} {{ user.middle_name }} {{ user.last_name }}
+        
+        <a href="/logout">Выйти</a>
+        <a href="/chat">Чат</a>
+    {% else %}
+        <a href="/login">Вход</a>
+        <a href="/register">Регистрация</a>
+    {% endif %}
+
+    <hr>
+    {% block content %}
+    {% endblock %}
+</body>
+</html>

@@ -12,10 +12,6 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
-    async def update_last_active(self, user_id: int) -> None:
-        pass
-
-    @abstractmethod
     async def delete(self, user_id: int) -> None:
         pass
     
