@@ -1,125 +1,83 @@
 import logging
-import psycopg2
+from typing import List, Optional
+from sqlalchemy import select, update, delete
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.repositories.student_progress_repository import StudentProgressRepository
 from domain.entities.student_progress import StudentProgress
+from infrastructure.database.models import StudentProgressModel
 from exceptions import StudentProgressNotFound
-from infrastructure.database.connection import DataBaseConnection
 
 logger = logging.getLogger(__name__)
 
-class PostgresStudentProgressRepository(StudentProgressRepository):
-    def __init__(self, db: DataBaseConnection):
-        super().__init__()
-        self.db = db
-        self.create_table()
+class AsyncPostgresStudentProgressRepository(StudentProgressRepository):
+    def __init__(self, session: AsyncSession):
+        self.session = session
 
-    def create_table(self):
-        with self.db.get_cursor() as cur:
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS student_progress (
-                    id SERIAL PRIMARY KEY,
-                    student_id BIGINT REFERENCES users(user_id),
-                    skill_id BIGINT REFERENCES skill_matrix(id),
-                    level INT,
-                    weaknesses TEXT
-                )
-            """)
-            self.db.commit()
-    
-    async def save(self, student_progress: StudentProgress):
+    async def save(self, student_progress: StudentProgress) -> StudentProgress:
         try:
-            with self.db.get_cursor() as cur:
-                cur.execute("""
-                    INSERT INTO student_progress (student_id, skill_id, level, weaknesses)
-                    VALUES (%s, %s, %s, %s)
-                """, (student_progress.student_id, student_progress.skill_id, 
-                      student_progress.level, student_progress.weaknesses))
-            self.db.commit()  
-        except psycopg2.Error as e:
+            db_progress = StudentProgressModel(
+                student_id=student_progress.student_id,
+                skill_id=student_progress.skill_id,
+                level=student_progress.level,
+                weaknesses=student_progress.weaknesses
+            )
+            self.session.add(db_progress)
+            await self.session.commit()
+            await self.session.refresh(db_progress)
+            student_progress.id = db_progress.id
+            return student_progress
+        except Exception as e:
+            await self.session.rollback()
             logger.error(f"Couldn't save student progress: {e}")
-            self.db.rollback()
-            raise  
-
-    async def find_by_student_id(self, student_id: int) -> list[StudentProgress]:
-        """Find all progress records for a student"""
-        try:
-            with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-                cur.execute("""
-                    SELECT id, student_id, skill_id, level, weaknesses
-                    FROM student_progress
-                    WHERE student_id = %s
-                """, (student_id,))  
-                
-                results = cur.fetchall()
-                if not results:
-                    return []
-                
-                progress_records = []
-                for result in results:
-                    progress = StudentProgress(
-                        student_id=result['student_id'],
-                        skill_id=result['skill_id'],
-                        level=result['level'],
-                        weaknesses=result['weaknesses']
-                    )
-                    progress.id = result['id']  
-                    progress_records.append(progress)
-                
-                return progress_records
-                
-        except psycopg2.Error as e:
-            logger.error(f"Couldn't find student progress by student_id {student_id}: {e}")
             raise
 
-    async def find_by_id(self, progress_id: int) -> StudentProgress | None:
-        """Find a specific progress record by its ID"""
-        try:
-            with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-                cur.execute("""
-                    SELECT id, student_id, skill_id, level, weaknesses
-                    FROM student_progress
-                    WHERE id = %s
-                """, (progress_id,))
-                
-                result = cur.fetchone()
-                if not result:
-                    raise StudentProgressNotFound(progress_id=progress_id)
-                
-                progress = StudentProgress(
-                    student_id=result['student_id'],
-                    skill_id=result['skill_id'],
-                    level=result['level'],
-                    weaknesses=result['weaknesses']
-                )
-                progress.id = result['id']
-                return progress
-                
-        except psycopg2.Error as e:
-            logger.error(f"Couldn't find progress by id {progress_id}: {e}")
-            raise
+    async def find_by_student_id(self, student_id: int) -> List[StudentProgress]:
+        result = await self.session.execute(
+            select(StudentProgressModel).where(StudentProgressModel.student_id == student_id)
+        )
+        rows = result.scalars().all()
+        return [
+            StudentProgress(
+                student_id=r.student_id,
+                skill_id=r.skill_id,
+                level=r.level,
+                weaknesses=r.weaknesses,
+                id=r.id
+            ) for r in rows
+        ]
 
-    async def find_by_student_and_skill(self, student_id: int, skill_id: int) -> StudentProgress | None:
-        try:
-            with self.db.get_cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-                cur.execute("""
-                    SELECT id, student_id, skill_id, level, weaknesses
-                    FROM student_progress
-                    WHERE student_id = %s AND skill_id = %s
-                """, (student_id, skill_id))
-                
-                result = cur.fetchone()
-                if not result:
-                    return None
-                
-                progress = StudentProgress(
-                    student_id=result['student_id'],
-                    skill_id=result['skill_id'],
-                    level=result['level'],
-                    weaknesses=result['weaknesses']
-                )
-                progress.id = result['id']
-                return progress
-        except psycopg2.Error as e:
-            logger.error(f"Couldn't find progress: {e}")
+    async def find_by_id(self, progress_id: int) -> Optional[StudentProgress]:
+        result = await self.session.execute(
+            select(StudentProgressModel).where(StudentProgressModel.id == progress_id)
+        )
+        row = result.scalar_one_or_none()
+        if not row:
+            raise StudentProgressNotFound(progress_id=progress_id)
+        
+        return StudentProgress(
+            student_id=row.student_id,
+            skill_id=row.skill_id,
+            level=row.level,
+            weaknesses=row.weaknesses,
+            id=row.id
+        )
+
+    async def find_by_student_and_skill(self, student_id: int, skill_id: int) -> Optional[StudentProgress]:
+        result = await self.session.execute(
+            select(StudentProgressModel).where(
+                StudentProgressModel.student_id == student_id,
+                StudentProgressModel.skill_id == skill_id
+            )
+        )
+        row = result.scalar_one_or_none()
+        if not row:
             return None
+            
+        return StudentProgress(
+            student_id=row.student_id,
+            skill_id=row.skill_id,
+            level=row.level,
+            weaknesses=row.weaknesses,
+            id=row.id
+        )
