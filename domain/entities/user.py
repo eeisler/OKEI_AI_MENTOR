@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from enum import Enum
 from domain.entities.study import Groups
-from typing import Optional
+from typing import Optional, Any
 
 
 @dataclass
@@ -19,7 +19,7 @@ class User:
     middle_name: str = None
     last_name: str = None
     role: UserRole = field(default_factory=lambda: UserRole.STUDENT)
-    group: Groups = None
+    group: Any = None
 
     def get_group(self):
         return self.group

@@ -23,6 +23,7 @@ class SpecialtyModel(Base):
 
     department: Mapped['DepartmentModel'] = relationship(back_populates='specialties') 
     groups: Mapped[list["GroupModel"]] = relationship(back_populates="specialty")
+    skill: Mapped[list['SkillMatrixModel']] = relationship(back_populates='specialty')
 
 
 class GroupModel(Base):
@@ -35,7 +36,7 @@ class GroupModel(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True) 
 
     specialty: Mapped['SpecialtyModel'] = relationship(back_populates='groups') 
-    users: Mapped[list["UserModel"]] = relationship(back_populates="group")
+    users: Mapped[list["UserModel"]] = relationship(back_populates='group')
 
 
 class UserModel(Base):
@@ -50,6 +51,10 @@ class UserModel(Base):
     role: Mapped[str | None] = mapped_column(Text, default="student")
     group_id: Mapped[int | None] = mapped_column(ForeignKey('groups.id'))
 
+    group: Mapped["GroupModel"] = relationship("GroupModel", back_populates='users')
+    dialog: Mapped[list["DialogModel"]] = relationship("DialogModel", back_populates='user')
+    student_progress: Mapped[list['StudentProgressModel']] = relationship('StudentProgressModel', back_populates='student')
+
 
 class DialogModel(Base):
     __tablename__ = 'dialogs'
@@ -62,6 +67,8 @@ class DialogModel(Base):
     user_message_time: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     ai_response_time: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
+    user: Mapped["UserModel"] = relationship("UserModel", back_populates='dialog')
+
 
 class SkillMatrixModel(Base):
     __tablename__ = 'skills'
@@ -73,6 +80,8 @@ class SkillMatrixModel(Base):
     description: Mapped[str | None] = mapped_column(Text)
     criterions: Mapped[str] = mapped_column(Text)
 
+    specialty: Mapped["SpecialtyModel"] = relationship("SpecialtyModel", back_populates='skill')
+
 
 class StudentProgressModel(Base):
     __tablename__ = 'student_progress' 
@@ -82,3 +91,5 @@ class StudentProgressModel(Base):
     skill_id: Mapped[int] = mapped_column(ForeignKey('skills.id'))
     level: Mapped[int | None] = mapped_column(BigInteger, default=0)
     weaknesses: Mapped[str | None] = mapped_column(Text)
+
+    student: Mapped["UserModel"] = relationship("UserModel", back_populates='student_progress')

@@ -6,8 +6,14 @@
         <input type="text" name="username" placeholder="Логин" required><br>
         <input type="password" name="password" placeholder="Пароль" required><br>
         <input type="text" name="first_name" placeholder="Имя" required><br>
-        <input type="text" name="middle_name" placeholder="Отчество"><br>
         <input type="text" name="last_name" placeholder="Фамилия"><br>
+        <input type="text" name="middle_name" placeholder="Отчество"><br>
+        <select name="group_id" id="group_id" required>
+            <option value="">  Выберите группу  </option>
+            {% for group in groups %}
+                <option value="{{ group.id }}">{{ group.year }}-{{ group.specialty.short_name }}-{{ group.group_number }}</option>
+            {% endfor %}
+        </select>
         
         {% if error %}
             <div style="color: red;">{{ error }}</div>

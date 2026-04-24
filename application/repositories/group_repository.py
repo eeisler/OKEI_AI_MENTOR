@@ -25,7 +25,7 @@ class GroupRepository(ABC):
         pass
 
     @abstractmethod
-    async def find_by_course(self, course: int) -> List[Groups]:
+    async def find_by_year(self, year: int) -> List[Groups]:
         """Find all groups for a specific course"""
         pass
 
