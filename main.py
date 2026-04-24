@@ -34,11 +34,13 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Твои репозитории и сервисы
+from typing import Optional, Any
+
 from infrastructure.database.connection import get_db
 from infrastructure.repositories.postgres_user_repository import AsyncPostgresUserRepository
 from infrastructure.repositories.postgres_skill_matrix_repository import AsyncPostgresSkillMatrixRepository
 from infrastructure.repositories.postgres_student_progress_repository import AsyncPostgresStudentProgressRepository
+from infrastructure.repositories.postgres_group_repository import AsyncPostgresGroupRepository
 from application.services.user_service import UserService
 from application.services.auth import hash_password, verify_password, create_access_token
 
@@ -57,6 +59,9 @@ async def get_user_service(db: AsyncSession = Depends(get_db)):
     progress_repo = AsyncPostgresStudentProgressRepository(db)
 
     return UserService(user_repo, skill_repo, progress_repo)
+
+async def get_group_repo(db: AsyncSession = Depends(get_db)):
+    return AsyncPostgresGroupRepository(db)
     
 @app.get("/", response_class=HTMLResponse)
 async def main_page(request: Request):
@@ -66,11 +71,16 @@ async def main_page(request: Request):
     context={})
 
 @app.get("/register", response_class=HTMLResponse)
-async def register_page(request: Request):
+async def register_page(
+    request: Request,
+    group_repo: AsyncPostgresGroupRepository = Depends(get_group_repo)
+):
+    groups_list = await group_repo.find_active_groups() 
+
     return templates.TemplateResponse(
     request=request, 
     name="register.html", 
-    context={})
+    context={"groups": groups_list})
 
 @app.post('/register')
 async def register(
@@ -80,18 +90,27 @@ async def register(
     first_name: str = Form(...),
     middle_name: str = Form(None),
     last_name: str = Form(None),
-    service: UserService = Depends(get_user_service)
+    group_id: str = Form(None),
+    service: UserService = Depends(get_user_service),
+    group_repo: AsyncPostgresGroupRepository = Depends(get_group_repo)
 ):
     hashed_password = hash_password(password)
+    print("-"*100)
+    print(f"{group_id} type {type(group_id)}")
+
+    group = await group_repo.find_by_id(group_id) 
+
+    print(group)
 
     await service.get_or_create_user(
         username=username,
         hashed_password=hashed_password,
         first_name=first_name,
         middle_name=middle_name,
-        last_name=last_name
+        last_name=last_name,
+        group=group
     )
-    return RedirectResponse(url="/login", status_code=302)
+    return RedirectResponse(url="/login", status_code=303)
 
 @app.get('/login', response_class=HTMLResponse)
 async def login_page(request: Request):

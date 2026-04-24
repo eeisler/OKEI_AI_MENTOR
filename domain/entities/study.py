@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Optional, Any
 
 
 @dataclass
@@ -15,14 +15,14 @@ class Specialty:
     code: str = None
     short_name: str = None
     full_name: str = None
-    department_id: int = None
+    department: Any = None
 
 
 @dataclass
 class Groups:
     id: Optional[int] = None
     year: int = None
-    specialty_id: int = None
+    specialty: Any = None
     group_number: int = None
     is_active: bool = False
     

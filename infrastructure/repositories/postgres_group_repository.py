@@ -2,8 +2,10 @@ import logging
 from typing import List, Optional
 from sqlalchemy import select, update, delete, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
+
 from application.repositories.group_repository import GroupRepository
-from domain.entities.study import Groups
+from domain.entities.study import Groups, Specialty  
 from infrastructure.database.models import GroupModel, UserModel
 
 logger = logging.getLogger(__name__)
@@ -14,13 +16,15 @@ class AsyncPostgresGroupRepository(GroupRepository):
 
     async def save(self, group: Groups) -> Groups:
         try:
+            spec_id = group.specialty.id if group.specialty else None
+            
             if group.id:
                 stmt = (
                     update(GroupModel)
                     .where(GroupModel.id == group.id)
                     .values(
                         year=group.year,
-                        specialty_id=group.specialty_id,
+                        specialty_id=spec_id,
                         group_number=group.group_number,
                         is_active=group.is_active
                     )
@@ -29,7 +33,7 @@ class AsyncPostgresGroupRepository(GroupRepository):
             else:
                 db_group = GroupModel(
                     year=group.year,
-                    specialty_id=group.specialty_id,
+                    specialty_id=spec_id,
                     group_number=group.group_number,
                     is_active=group.is_active
                 )
@@ -55,7 +59,7 @@ class AsyncPostgresGroupRepository(GroupRepository):
         return Groups(
             id=row.id,
             year=row.year,
-            specialty_id=row.specialty_id,
+            specialty=Specialty(id=row.specialty_id) if row.specialty_id else None,
             group_number=row.group_number,
             is_active=row.is_active
         )
@@ -68,7 +72,8 @@ class AsyncPostgresGroupRepository(GroupRepository):
         )
         return [
             Groups(
-                id=r.id, year=r.year, specialty_id=r.specialty_id,
+                id=r.id, year=r.year, 
+                specialty=Specialty(id=r.specialty_id) if r.specialty_id else None,
                 group_number=r.group_number, is_active=r.is_active
             ) for r in result.scalars().all()
         ]
@@ -77,12 +82,19 @@ class AsyncPostgresGroupRepository(GroupRepository):
         result = await self.session.execute(
             select(GroupModel)
             .where(GroupModel.is_active == True)
+            .options(joinedload(GroupModel.specialty))
             .order_by(desc(GroupModel.year))
         )
         return [
             Groups(
-                id=r.id, year=r.year, specialty_id=r.specialty_id,
-                group_number=r.group_number, is_active=r.is_active
+                id=r.id, 
+                year=r.year, 
+                specialty=Specialty(
+                    id=r.specialty.id, 
+                    short_name=r.specialty.short_name
+                ) if r.specialty else None,
+                group_number=r.group_number, 
+                is_active=r.is_active
             ) for r in result.scalars().all()
         ]
 
@@ -94,7 +106,8 @@ class AsyncPostgresGroupRepository(GroupRepository):
         )
         return [
             Groups(
-                id=r.id, year=r.year, specialty_id=r.specialty_id,
+                id=r.id, year=r.year, 
+                specialty=Specialty(id=r.specialty_id) if r.specialty_id else None,
                 group_number=r.group_number, is_active=r.is_active
             ) for r in result.scalars().all()
         ]

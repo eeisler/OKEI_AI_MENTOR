@@ -3,8 +3,8 @@ from application.repositories.student_progress_repository import StudentProgress
 from application.repositories.user_repository import UserRepository
 from domain.entities.student_progress import StudentProgress
 from domain.entities.user import User, UserRole
+from typing import Optional, Any
 import logging
-
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,8 @@ class UserService:
         first_name: str | None = None,
         last_name: str | None = None,
         middle_name: str | None = None,
-        role: UserRole = UserRole.STUDENT
+        role: UserRole = UserRole.STUDENT,
+        group: Any | None = None
     ) -> User:
         user = await self.repository.find_by_id(user_id)
 
@@ -39,12 +40,14 @@ class UserService:
                 first_name=first_name,
                 last_name=last_name,
                 middle_name=middle_name,
-                role=role
+                role=role,
+                group=group
             )
             user = await self.repository.save(user)
 
             if user.role == UserRole.STUDENT:
-                await self.initialize_student_progress(user)
+                pass
+                #await self.initialize_student_progress(user)
             logger.info(f'User {user_id=} {username=} {role=} succfully created')
         else:
             logger.info('User was already created')
