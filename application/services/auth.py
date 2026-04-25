@@ -12,8 +12,7 @@ ALGORITHM = "HS256"
 def hash_password(password: str):
     print(password)
     hashed = pwd_context.hash(password)
-    print(hashed)
-    return 
+    return hashed
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)

@@ -96,9 +96,9 @@ async def register(
 ):
     hashed_password = hash_password(password)
     print("-"*100)
-    print(f"{group_id} type {type(group_id)}")
+    print(f"{group_id} type {type(int(group_id))}")
 
-    group = await group_repo.find_by_id(group_id) 
+    group = await group_repo.find_by_id(int(group_id)) 
 
     print(group)
 
