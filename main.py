@@ -44,6 +44,8 @@ from infrastructure.repositories.postgres_group_repository import AsyncPostgresG
 from application.services.user_service import UserService
 from application.services.auth import hash_password, verify_password, create_access_token
 
+from presentation.web.fastapi.models import *
+
 load_dotenv()
 config = Config.load()
 
@@ -62,47 +64,44 @@ async def get_user_service(db: AsyncSession = Depends(get_db)):
 
 async def get_group_repo(db: AsyncSession = Depends(get_db)):
     return AsyncPostgresGroupRepository(db)
-    
-@app.get("/", response_class=HTMLResponse)
-async def main_page(request: Request):
-    return templates.TemplateResponse(
-    request=request, 
-    name="main.html", 
-    context={})
 
-@app.get("/register", response_class=HTMLResponse)
-async def register_page(
-    request: Request,
-    group_repo: AsyncPostgresGroupRepository = Depends(get_group_repo)
-):
-    groups_list = await group_repo.find_active_groups() 
+class TestRequest(BaseModel):
+    text: str
 
-    return templates.TemplateResponse(
-    request=request, 
-    name="register.html", 
-    context={"groups": groups_list})
+@app.post("/test")
+async def test(request: TestRequest):
+    return {"hey": request.text.upper()}
+
+@app.get("/groups")
+async def get_groups(group_repo: AsyncPostgresGroupRepository = Depends(get_group_repo)):
+    groups = await group_repo.find_active_groups()
+
+    return [
+        {"id": g.id, "name": f"{datetime.now.year - g.year}"}
+        for g in groups
+    ]
 
 @app.post('/register')
 async def register(
-    request: Request,
-    username: str = Form(...),
-    password: str = Form(...),
-    first_name: str = Form(...),
-    middle_name: str = Form(None),
-    last_name: str = Form(None),
-    group_id: str = Form(None),
+    data: RegisterRequest,
     service: UserService = Depends(get_user_service),
     group_repo: AsyncPostgresGroupRepository = Depends(get_group_repo)
 ):
+    existing = await service.user_repo.find_by_username(data.username)
+
+    if existing:
+        return JSONResponse(
+            status_code=400,
+            content={'success': False, 'error': "Username already exists"}
+        )
+    
+    group = None
+    if data.group_id:
+        group = await group_repo.find_by_id(int(data.group_id))
+
     hashed_password = hash_password(password)
-    print("-"*100)
-    print(f"{group_id} type {type(int(group_id))}")
 
-    group = await group_repo.find_by_id(int(group_id)) 
-
-    print(group)
-
-    await service.get_or_create_user(
+    user = await service.get_or_create_user(
         username=username,
         hashed_password=hashed_password,
         first_name=first_name,
@@ -110,11 +109,36 @@ async def register(
         last_name=last_name,
         group=group
     )
-    return RedirectResponse(url="/login", status_code=303)
+    return JSONResponse({
+        "succsess": True,
+        "user_id": user.id,
+        "username": user.username
+    })
 
-@app.get('/login', response_class=HTMLResponse)
-async def login_page(request: Request):
-    return templates.TemplateResponse(
-    request=request, 
-    name="login.html", 
-    context={})
+@app.post('/login')
+async def login_page(
+    data: LoginRequest, 
+    service: UserService = Depends(get_user_service)
+    ):
+
+    user = await service.user_repo.find_by_username(data.username)
+
+    if not user or not verify_password(data.password, user.hashed_password):
+        return JSONResponse(
+            status_code=401,
+            content={"success": False, "error": "Invalid credentials"}
+        )
+
+    token = create_access_token({"sub": user.username, "user_id": user.id})
+
+    return JSONResponse({
+        "success": True, 
+        "token": token, 
+        "user":{
+            "id": user.id,
+            "username": user.username,
+            "first_name": user.first_name,
+            "middle_name": user.middle_name,
+            "last_name": user.last_name
+        }
+    })
