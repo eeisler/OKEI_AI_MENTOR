@@ -4,6 +4,7 @@ from application.ports.ai.ai_port import AIService
 from application.repositories.skill_matrix_repository import SkillMatrixRepository
 from application.repositories.student_progress_repository import StudentProgressRepository
 from application.repositories.user_repository import UserRepository
+from application.repositories.specialty_repository import SpecialtyRepository
 
 
 from domain.entities.session import Session
@@ -14,7 +15,7 @@ from domain.entities.study import Specialty, Department, Groups
 from domain.entities.dialog import Dialog
 
 import uuid
-import datetime
+from datetime import datetime
 
 from domain.entities.dialog import Dialog
 
@@ -28,6 +29,7 @@ class AIContextService:
             matrix_repository: SkillMatrixRepository,
             student_progress_repository: StudentProgressRepository,
             user_repository: UserRepository,
+            speciality_repository: SpecialtyRepository,
             instruction: str
             ):
         self.dialog_service = dialog_service
@@ -37,9 +39,14 @@ class AIContextService:
         self.student_progress_repository = student_progress_repository
         self.matrix_repository = matrix_repository
         self.user_repository = user_repository
+        self.speciality_repository = speciality_repository
 
     async def get_response_with_history(self, user_id: int, user_message: str):
-        dialog_history = await self.dialog_service.get_user_history(user_id, limit=10)
+        dialogs = await self.dialog_service.get_user_history(user_id, limit=10)
+
+        dialog_history = []
+        for dialog in dialogs:
+            dialog_history.extend(dialog.to_context_messages())
 
         return await self.ai_service.get_ai_response_with_context(
             user_id=user_id,
@@ -48,11 +55,11 @@ class AIContextService:
         )
 
     async def start_skill_session(self, user_id: int) -> str:
-        prompt = self.form_question_instruction(user_id)
+        prompt = await self.form_question_instruction(user_id)
         question = await self.ai_service.generate_task(prompt)
         question_id = str(uuid.uuid4())
 
-        dialog = self.dialog_service.save(
+        self.dialog_service.save(
             user_id=user_id,
             user_message="",
             ai_response=question,
@@ -61,7 +68,7 @@ class AIContextService:
             ai_response_time=datetime.now()
             ) 
 
-        return dialog
+        return question
 
     async def evaluate_answer(
         self, 
@@ -85,26 +92,36 @@ class AIContextService:
         
     async def form_question_instruction(self, user_id: int) -> str:        
         user: User = await self.user_repository.find_by_id(user_id)
-        course: int = user.course
+        course: int = datetime.now().year - user.group.year
 
         student_progress: StudentProgress = await self.student_progress_repository.find_by_id(user_id)
         matrix_skill_id: int = student_progress.skill_id
         matrix: SkillMatrix = await self.matrix_repository.find_by_id(matrix_skill_id)
         matrix_skill: str = matrix.skill 
         matrix_criterion: str = matrix.criterions
-        student_progress: int = student_progress.student_level
+        student_progress_level: int = student_progress.level
         weaknesses: str = student_progress.weaknesses
-        speciality: Specialty = matrix.Specialty
+        speciality: Specialty = await self.speciality_repository.find_by_id(matrix.specialty_id)
 
-        question_instruction = (f"""{self.instruction}
-                                Сделай задание для отработки навыка {matrix_skill} для студента
-                                специальности {speciality} {course} курса
-                                с прогрессом по этому навыку - {student_progress}% и с 
-                                проблемами усвоения темы в следующих местах: {weaknesses}
-                                Навык считается освоенным когда: {matrix_criterion}""")
+        question_instruction = f"""
+        Сделай задание для отработки навыка {matrix_skill} для студента специальности {speciality.full_name} {course} курса.
+
+        Данные о студенте:
+        - Прогресс по навыку: {student_progress_level}%
+        - Проблемные места: {weaknesses if weaknesses else 'не выявлены'}
+
+        Критерии освоения навыка:
+        {matrix_criterion}
+
+        Требования:
+        1. Задание должно быть практическим
+        2. Уровень сложности должен соответствовать {course} курсу
+        3. В конце напиши критерии, по которым будет оцениваться решение
+
+        Обязательно напиши текст задания.
+        """
 
         return question_instruction 
-
 
     def _parse_ai_result(self, ai_response: str):
         ai_response = ai_response.strip()
