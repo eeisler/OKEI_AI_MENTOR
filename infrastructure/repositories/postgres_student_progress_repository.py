@@ -53,7 +53,7 @@ class AsyncPostgresStudentProgressRepository(StudentProgressRepository):
         )
         row = result.scalar_one_or_none()
         if not row:
-            raise StudentProgressNotFound(progress_id=progress_id)
+            raise StudentProgressNotFound(id= progress_id)
         
         return StudentProgress(
             student_id=row.student_id,

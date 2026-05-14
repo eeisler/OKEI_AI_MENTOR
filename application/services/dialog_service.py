@@ -36,15 +36,10 @@ class DialogService:
         limit: int = 10,
         question_id: int = None
     ) -> list:
-        """Get user conversation history, optionally filtered by question"""
         dialogs = await self.repository.get_recent_dialogs(
             user_id=user_id, 
             limit=limit,
             question_id=question_id
         )
         
-        messages = []
-        for dialog in dialogs:
-            messages.extend(dialog.to_context_messages())
-        
-        return messages
+        return dialogs

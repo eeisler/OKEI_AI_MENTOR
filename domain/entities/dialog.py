@@ -24,4 +24,3 @@ class Dialog:
             {"role": "user", "content": self.user_message},
             {"role": "assistant", "content": self.ai_response}
         ]
-

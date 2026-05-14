@@ -58,7 +58,7 @@ class AsyncPostgresSpecialtyRepository(SpecialtyRepository):
             code=row.code,
             short_name=row.short_name,
             full_name=row.full_name,
-            department_id=row.department_id
+            department=row.department_id
         )
 
     async def find_by_department(self, department_id: int) -> List[Specialty]:
@@ -99,3 +99,6 @@ class AsyncPostgresSpecialtyRepository(SpecialtyRepository):
             await self.session.rollback()
             logger.error(f"Couldn't delete specialty {specialty_id}: {e}")
             raise
+
+    async def find_by_code():
+        pass

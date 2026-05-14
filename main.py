@@ -15,9 +15,11 @@ from application.repositories.session_repository import SessionRepository
 from application.repositories.skill_matrix_repository import SkillMatrixRepository
 from application.repositories.student_progress_repository import StudentProgressRepository
 from config.config import Config
+from datetime import datetime, timezone
 
 
 from infrastructure.ai.yandex_ai_service import YandexAIService
+from infrastructure.ai.qwen_ai_service import QwenAIService
 from application.services.ai_service import AIContextService
 from application.services.user_service import UserService
 from application.services.dialog_service import DialogService
@@ -34,6 +36,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
 from typing import Optional, Any
 
 from infrastructure.database.connection import get_db
@@ -41,6 +46,8 @@ from infrastructure.repositories.postgres_user_repository import AsyncPostgresUs
 from infrastructure.repositories.postgres_skill_matrix_repository import AsyncPostgresSkillMatrixRepository
 from infrastructure.repositories.postgres_student_progress_repository import AsyncPostgresStudentProgressRepository
 from infrastructure.repositories.postgres_group_repository import AsyncPostgresGroupRepository
+from infrastructure.repositories.postgres_dialog_repository import AsyncPostgresDialogRepository
+from infrastructure.repositories.postgres_specialty_repository import AsyncPostgresSpecialtyRepository
 from application.services.user_service import UserService
 from application.services.auth import hash_password, verify_password, create_access_token
 
@@ -53,7 +60,16 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
-templates = Jinja2Templates(directory='presentation/web/fastapi/templates')
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:9080"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],  
+    allow_headers=["*"],  
+)
 
 async def get_user_service(db: AsyncSession = Depends(get_db)):
     user_repo = AsyncPostgresUserRepository(db)
@@ -65,12 +81,21 @@ async def get_user_service(db: AsyncSession = Depends(get_db)):
 async def get_group_repo(db: AsyncSession = Depends(get_db)):
     return AsyncPostgresGroupRepository(db)
 
-class TestRequest(BaseModel):
-    text: str
+async def get_dialog_service(db: AsyncSession = Depends(get_db)):
+    return DialogService(AsyncPostgresDialogRepository(db))
 
-@app.post("/test")
-async def test(request: TestRequest):
-    return {"hey": request.text.upper()}
+async def get_ai_service(db: AsyncSession = Depends(get_db)):
+    return AIContextService(
+        dialog_service = DialogService(AsyncPostgresDialogRepository(db)),
+        dialog_repository = AsyncPostgresDialogRepository(db),
+        ai_service = QwenAIService(),
+        matrix_repository = AsyncPostgresSkillMatrixRepository(db),
+        student_progress_repository = AsyncPostgresStudentProgressRepository(db),
+        user_repository = AsyncPostgresUserRepository(db),
+        speciality_repository = AsyncPostgresSpecialtyRepository(db),
+        instruction = config.ai_instruction
+    )
+
 
 @app.get("/groups")
 async def get_groups(group_repo: AsyncPostgresGroupRepository = Depends(get_group_repo)):
@@ -142,3 +167,62 @@ async def login_page(
             "last_name": user.last_name
         }
     })
+
+@app.post('/chat')
+async def chat(
+        data: ChatRequest,
+        ai_service: AIContextService = Depends(get_ai_service),
+        dialog_service: DialogService = Depends(get_dialog_service)
+    ):
+    user_id = 1
+    user_message = data.message
+    user_message_time = datetime.now()
+
+    result = {}
+
+    print("-"*100 + f"\n{data.message}")
+
+    if data.message == '/task':
+        ai_task = await ai_service.start_skill_session(user_id)
+        result = {"message": ai_task}
+    else:
+        ai_response = await ai_service.get_response_with_history(user_id=user_id, user_message=user_message)
+        ai_response_time = datetime.now()
+
+        await dialog_service.save(
+            user_id=user_id, 
+            user_message=user_message, 
+            ai_response=ai_response,
+            question_id = None,
+            user_message_time = user_message_time,
+            ai_response_time = ai_response_time)
+
+        result = {"message": ai_response}
+
+    return result
+
+@app.get("/chat/history")
+async def show_chat(dialog_service: DialogService = Depends(get_dialog_service)):
+    user_id = 1
+    dialogs = await dialog_service.get_user_history(user_id=user_id, limit = 1000, question_id = None)
+    messages = []
+    for dialog in dialogs:
+        if dialog.user_message:  
+            messages.append({
+                "id":  f"{dialog.id}user",
+                "role": "user",
+                "content": dialog.user_message,
+                "timestamp": dialog.user_message_time
+            })
+        if dialog.ai_response:  
+            messages.append({
+                "id": f"{dialog.id}ai",
+                "role": "ai",
+                "content": dialog.ai_response,
+                "timestamp": dialog.ai_response_time
+            })
+    
+    return {
+        "user_id": user_id,
+        "messages": messages
+    }

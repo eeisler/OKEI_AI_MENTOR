@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.repositories.dialog_repository import DialogRepository
 from domain.entities.dialog import Dialog
-from infrastructure.database.models import DialogModel  # Твоя модель из models.py
-from domain.exceptions.errors import DataBaseError # Подправь импорт под свой проект
+from infrastructure.database.models import DialogModel  
+from exceptions import DataBaseError 
 
 logger = logging.getLogger(__name__)
 
@@ -93,3 +93,6 @@ class AsyncPostgresDialogRepository(DialogRepository):
         except Exception as e:
             logger.error(f"DB error: Couldn't find dialog by id {dialog_id}: {e}")
             raise DataBaseError(str(e), operation='find_dialog_by_id')
+
+    async def get_dialogs_by_question():
+        pass 
