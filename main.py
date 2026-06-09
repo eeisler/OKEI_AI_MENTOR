@@ -13,7 +13,10 @@ from dotenv import load_dotenv
 
 from application.repositories.session_repository import SessionRepository
 from application.repositories.skill_matrix_repository import SkillMatrixRepository
+from application.repositories.group_repository import GroupRepository
 from application.repositories.student_progress_repository import StudentProgressRepository
+from application.repositories.user_repository import UserRepository
+from application.repositories.specialty_repository import SpecialtyRepository
 from config.config import Config
 from datetime import datetime, timezone
 
@@ -49,7 +52,7 @@ from infrastructure.repositories.postgres_group_repository import AsyncPostgresG
 from infrastructure.repositories.postgres_dialog_repository import AsyncPostgresDialogRepository
 from infrastructure.repositories.postgres_specialty_repository import AsyncPostgresSpecialtyRepository
 from application.services.user_service import UserService
-from application.services.auth import hash_password, verify_password, create_access_token
+from application.services.auth import hash_password, verify_password, create_access_token, get_current_user
 
 from presentation.web.fastapi.models import *
 
@@ -63,9 +66,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:9080"
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],  
     allow_headers=["*"],  
@@ -83,6 +84,12 @@ async def get_group_repo(db: AsyncSession = Depends(get_db)):
 
 async def get_dialog_service(db: AsyncSession = Depends(get_db)):
     return DialogService(AsyncPostgresDialogRepository(db))
+
+async def get_user_repo(db: AsyncSession = Depends(get_db)):
+    return AsyncPostgresUserRepository(db)
+
+async def get_specialty_repo(db: AsyncSession = Depends(get_db)):
+    return AsyncPostgresSpecialtyRepository(db)
 
 async def get_ai_service(db: AsyncSession = Depends(get_db)):
     return AIContextService(
@@ -110,9 +117,10 @@ async def get_groups(group_repo: AsyncPostgresGroupRepository = Depends(get_grou
 async def register(
     data: RegisterRequest,
     service: UserService = Depends(get_user_service),
+    user_repo: UserRepository = Depends(get_user_repo),
     group_repo: AsyncPostgresGroupRepository = Depends(get_group_repo)
 ):
-    existing = await service.user_repo.find_by_username(data.username)
+    existing = await user_repo.find_by_username(data.username)
 
     if existing:
         return JSONResponse(
@@ -124,18 +132,18 @@ async def register(
     if data.group_id:
         group = await group_repo.find_by_id(int(data.group_id))
 
-    hashed_password = hash_password(password)
+    hashed_password = hash_password(data.password)
 
     user = await service.get_or_create_user(
-        username=username,
+        username=data.username,
         hashed_password=hashed_password,
-        first_name=first_name,
-        middle_name=middle_name,
-        last_name=last_name,
+        first_name="test",
+        middle_name="test",
+        last_name="test",
         group=group
     )
     return JSONResponse({
-        "succsess": True,
+        "success": True,
         "user_id": user.id,
         "username": user.username
     })
@@ -143,10 +151,13 @@ async def register(
 @app.post('/login')
 async def login_page(
     data: LoginRequest, 
-    service: UserService = Depends(get_user_service)
+    user_service: UserService = Depends(get_user_service),
+    user_repo: UserRepository = Depends(get_user_repo),
+    group_repo: GroupRepository = Depends(get_group_repo),
+    speciality_repo: SpecialtyRepository = Depends(get_specialty_repo)
     ):
 
-    user = await service.user_repo.find_by_username(data.username)
+    user = await user_repo.find_by_username(data.username)
 
     if not user or not verify_password(data.password, user.hashed_password):
         return JSONResponse(
@@ -154,7 +165,10 @@ async def login_page(
             content={"success": False, "error": "Invalid credentials"}
         )
 
-    token = create_access_token({"sub": user.username, "user_id": user.id})
+    token = create_access_token({"username": user.username, "user_id": user.id})
+    group = await group_repo.find_by_id(user.group.id)
+    specialty = await speciality_repo.find_by_id(group.specialty.id)
+    group_name = str(group.year) + str(specialty.short_name) + str(group.group_number)
 
     return JSONResponse({
         "success": True, 
@@ -164,17 +178,20 @@ async def login_page(
             "username": user.username,
             "first_name": user.first_name,
             "middle_name": user.middle_name,
-            "last_name": user.last_name
+            "last_name": user.last_name,
+            "group": group_name
         }
     })
 
 @app.post('/chat')
 async def chat(
+        request: Request,
         data: ChatRequest,
         ai_service: AIContextService = Depends(get_ai_service),
         dialog_service: DialogService = Depends(get_dialog_service)
     ):
-    user_id = 1
+    current_user = get_current_user(request)
+    user_id = current_user["user_id"]
     user_message = data.message
     user_message_time = datetime.now()
 
@@ -197,13 +214,19 @@ async def chat(
             user_message_time = user_message_time,
             ai_response_time = ai_response_time)
 
-        result = {"message": ai_response}
+        result = {
+            "success": True,
+            "message": ai_response}
 
     return result
 
 @app.get("/chat/history")
-async def show_chat(dialog_service: DialogService = Depends(get_dialog_service)):
-    user_id = 1
+async def get_chat_history(
+    request: Request,
+    dialog_service: DialogService = Depends(get_dialog_service)
+    ):
+    current_user = get_current_user(request)
+    user_id = current_user["user_id"]
     dialogs = await dialog_service.get_user_history(user_id=user_id, limit = 1000, question_id = None)
     messages = []
     for dialog in dialogs:
@@ -223,6 +246,8 @@ async def show_chat(dialog_service: DialogService = Depends(get_dialog_service))
             })
     
     return {
+        "success": True,
         "user_id": user_id,
+        "username": current_user["username"],
         "messages": messages
     }
