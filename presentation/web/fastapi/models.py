@@ -4,12 +4,12 @@ from datetime import datetime
 
 
 class RegisterRequest(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50, description="Unique username")
-    password: str = Field(..., min_length=6, description="Password (min 6 chars)")
-    first_name: str = Field(..., min_length=1, max_length=100)
-    last_name: Optional[str] = Field(None, max_length=100)
-    middle_name: Optional[str] = Field(None, max_length=100)
-    group_id: Optional[int] = Field(None, description="Group ID if exists")
+    username: str = Field(...)
+    password: str = Field(...)
+    first_name: str = Field(...)
+    last_name: Optional[str] = Field(...)
+    middle_name: Optional[str] = Field(...)
+    group_id: Optional[int] = Field(...)
 
 class RegisterResponse(BaseModel):
     success: bool

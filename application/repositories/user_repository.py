@@ -12,6 +12,10 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
+    async def find_by_username(self, username: str) -> User | None:
+        pass
+
+    @abstractmethod
     async def delete(self, user_id: int) -> None:
         pass
     

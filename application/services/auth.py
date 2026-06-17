@@ -35,7 +35,7 @@ def get_current_user(request: Request):
             status_code=401,
             detail="Please login"
         )
-    token = auth_header.split(" ")[1] # why?
+    token = auth_header.split(" ")[1] 
     
     payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 

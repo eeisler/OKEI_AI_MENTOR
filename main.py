@@ -105,13 +105,21 @@ async def get_ai_service(db: AsyncSession = Depends(get_db)):
 
 
 @app.get("/groups")
-async def get_groups(group_repo: AsyncPostgresGroupRepository = Depends(get_group_repo)):
+async def get_groups(
+    specialty_repo: AsyncPostgresSpecialtyRepository =  Depends(get_specialty_repo),
+    group_repo: AsyncPostgresGroupRepository = Depends(get_group_repo)
+    ):
     groups = await group_repo.find_active_groups()
 
-    return [
-        {"id": g.id, "name": f"{datetime.now.year - g.year}"}
-        for g in groups
-    ]
+    result = []
+    for g in groups:
+        specialty = await specialty_repo.find_by_id(g.specialty.id)
+        result.append({
+            "id": g.id, 
+            "name": f"{g.year}-{specialty.short_name}-{g.group_number}"
+        })
+    
+    return result 
 
 @app.post('/register')
 async def register(
@@ -120,15 +128,15 @@ async def register(
     user_repo: UserRepository = Depends(get_user_repo),
     group_repo: AsyncPostgresGroupRepository = Depends(get_group_repo)
 ):
+    print(data.group_id, data.password, data.username)
     existing = await user_repo.find_by_username(data.username)
 
     if existing:
         return JSONResponse(
-            status_code=400,
+            status_code=200,
             content={'success': False, 'error': "Username already exists"}
         )
     
-    group = None
     if data.group_id:
         group = await group_repo.find_by_id(int(data.group_id))
 
@@ -183,7 +191,7 @@ async def login_page(
         }
     })
 
-@app.post('/chat')
+@app.post('/chat')  
 async def chat(
         request: Request,
         data: ChatRequest,
