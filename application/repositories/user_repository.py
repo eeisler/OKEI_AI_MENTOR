@@ -28,3 +28,13 @@ class UserRepository(ABC):
     async def find_by_username(self, username: str) -> User | None:
         """Находит пользователя по имени пользователя (логину)."""
         pass
+
+    @abstractmethod
+    async def find_users_with_active_streak(self) -> list[User]:
+        """Возвращает всех пользователей с current_streak > 0."""
+        pass
+
+    @abstractmethod
+    async def find_active_students(self) -> list[User]:
+        """возвращает студентов из активных групп"""
+        pass

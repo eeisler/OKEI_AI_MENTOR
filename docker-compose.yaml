@@ -1,15 +1,61 @@
 services:
-  ai_mentor: 
+  ai_mentor:
+    build: .
     image: "ghcr.io/eeisler/okei_ai_mentor/ai_mentor:latest"
-    ports: 
+    ports:
       - "127.0.0.1:8000:8000"
     env_file:
       - .env
     networks:
       - net
-  postgres: 
+
+  worker:
+    build: .
+    image: "ghcr.io/eeisler/okei_ai_mentor/ai_mentor:latest"
+    command: taskiq worker infrastructure.taskiq.broker:broker infrastructure.taskiq.tasks.tasks
+    env_file:
+      - .env
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - net
+
+  scheduler:
+    build: .
+    image: "ghcr.io/eeisler/okei_ai_mentor/ai_mentor:latest"
+    command: taskiq scheduler infrastructure.taskiq.broker:scheduler infrastructure.taskiq.tasks.tasks --skip-first-run
+    env_file:
+      - .env
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - net
+
+  redis:
+    image: "redis:7-alpine"
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - net
+
+  postgres:
     image: "postgres:17.5"
-    ports: 
+    ports:
       - "127.0.0.1:5433:5432"
     volumes:
       - database_data:/var/lib/postgresql/data/

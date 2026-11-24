@@ -139,3 +139,32 @@ class AsyncPostgresUserRepository(UserRepository):
             await self.session.rollback() 
             logger.error(f"Failed to delete user {user_id}: {e}")
             raise
+
+    async def find_users_with_active_streak(self) -> list[User]:
+        stmt = (
+            select(UserModel)
+            .options(
+                joinedload(UserModel.group)
+                .joinedload(GroupModel.specialty)
+            )
+            .where(UserModel.current_streak > 0)
+        )
+        result = await self.session.execute(stmt)
+        db_users = result.scalars().all()
+        return [self._to_domain(u) for u in db_users]
+    
+    async def find_active_students(self) -> list[User]:
+        stmt = (
+            select(UserModel)
+            .options(
+                joinedload(UserModel.group)
+                .joinedload(GroupModel.specialty)
+            )
+            .where(
+                UserModel.role == UserRole.STUDENT.value,
+                UserModel.group.has(GroupModel.is_active.is_(True)),
+            )
+        )
+        result = await self.session.execute(stmt)
+        db_users = result.scalars().all()
+        return [self._to_domain(u) for u in db_users]

@@ -49,6 +49,11 @@ class Config:
     db_password: str
 
     key: str
+    redis: str
+    task_generation_hour: int
+    task_generation_minute: int
+    task_generation_timezone: str
+
 
     @classmethod
     def load(cls) -> Self:
@@ -64,6 +69,11 @@ class Config:
             db_password=os.getenv("DB_PASSWORD", ""),
 
             key=os.getenv("SECRET_KEY", ""),
+
+            redis=os.getenv("REDIS_URL"),
+            task_generation_hour = int(os.getenv("TASK_GENERATION_HOUR", 0)),
+            task_generation_minute = int(os.getenv("TASK_GENERATION_MINUTE", 0)),
+            task_generation_timezone = os.getenv("TASK_GENERATION_TIMEZONE", "Asia/Yekaterinburg")
         )
 
         instance.validate()
@@ -72,4 +82,3 @@ class Config:
 
     def validate(self):
         pass
-        
